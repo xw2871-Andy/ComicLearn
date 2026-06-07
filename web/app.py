@@ -1,4 +1,4 @@
-"""FastAPI app for the AI Comic Book studio.
+"""FastAPI app for the ComicTeach studio.
 
 Routes
 ------
@@ -72,7 +72,7 @@ if ENV_PATH.exists():
         os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-app = FastAPI(title="AI Comic Book — Studio", version="0.1.0")
+app = FastAPI(title="ComicTeach Studio", version="0.1.0")
 
 # Initialize DB on first import so the first request doesn't pay the cost.
 db.init_db()

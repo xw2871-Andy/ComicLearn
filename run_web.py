@@ -1,4 +1,4 @@
-"""Launch the AI Comic Book studio web app.
+"""Launch the ComicTeach studio web app.
 
 Usage::
 
@@ -31,10 +31,11 @@ def main() -> int:
         )
         return 1
 
-    host = os.environ.get("HOST", "0.0.0.0")
+    host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
+    display_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
 
-    print(f"AI Comic Book Studio · http://{host}:{port}")
+    print(f"ComicTeach Studio · http://{display_host}:{port}")
     uvicorn.run("web.app:app", host=host, port=port, reload=False, log_level="info")
     return 0
 
