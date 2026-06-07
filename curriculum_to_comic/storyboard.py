@@ -20,7 +20,7 @@ def build_storyboard(
     data = claude.complete_json(
         system=STORYBOARD_SYSTEM,
         user=user_msg,
-        max_tokens=5500,
+        max_tokens=8000,
         temperature=0.7,
     )
     data.setdefault("lesson_title", lesson.title)

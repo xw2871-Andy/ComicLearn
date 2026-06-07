@@ -12,7 +12,7 @@ def build_lesson(curriculum: CurriculumInput, claude: ClaudeClient) -> Lesson:
     data = claude.complete_json(
         system=LESSON_PLANNER_SYSTEM,
         user=user_msg,
-        max_tokens=3500,
+        max_tokens=6000,
         temperature=0.4,
     )
     # Backfill the grade level if the model omits it.

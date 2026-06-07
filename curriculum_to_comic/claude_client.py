@@ -133,7 +133,30 @@ class ClaudeClient:
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return _parse_json_lenient(raw)
+        try:
+            return _parse_json_lenient(raw)
+        except ValueError:
+            repaired = self.complete(
+                system=(
+                    "You repair malformed model output into one complete, valid "
+                    "JSON object. Return only JSON. Do not use markdown fences. "
+                    "Preserve all existing fields and complete any truncated "
+                    "arrays or strings with reasonable concise values."
+                ),
+                user=(
+                    "The previous response was supposed to be JSON for this "
+                    "task, but it was malformed or truncated.\n\n"
+                    "Original task prompt:\n"
+                    f"{user}\n\n"
+                    "Malformed response:\n"
+                    f"{raw}\n\n"
+                    "Return one complete valid JSON object now."
+                ),
+                model=model,
+                max_tokens=max(max_tokens, 6000),
+                temperature=0,
+            )
+            return _parse_json_lenient(repaired)
 
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
