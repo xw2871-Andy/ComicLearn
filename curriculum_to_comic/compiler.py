@@ -19,6 +19,7 @@ objectives) and a closing page lists misconceptions / "what to watch for".
 from __future__ import annotations
 
 import io
+import base64
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -128,7 +129,11 @@ def _svg_to_image_flowable(svg_markup: str, max_w: float, max_h: float) -> Image
 
     try:
         # Sanity-check that the SVG is well-formed XML.
-        ET.fromstring(svg_markup)
+        root = ET.fromstring(svg_markup)
+        embedded = _embedded_image_flowable(root, max_w=max_w, max_h=max_h)
+        if embedded is not None:
+            return embedded
+
         drawing = svg2rlg(io.StringIO(svg_markup))
         if drawing is None:
             raise ValueError("svglib returned None")
@@ -149,6 +154,50 @@ def _svg_to_image_flowable(svg_markup: str, max_w: float, max_h: float) -> Image
             f"<i>[Panel could not be rasterized: {type(exc).__name__}: {exc}]</i>",
             _stylesheet()["Caption"],
         )
+
+
+def _embedded_image_flowable(root: ET.Element, *, max_w: float, max_h: float) -> Image | None:
+    """Create a flowable directly from a data-URI image in a Gemini SVG wrapper."""
+
+    for el in root.iter():
+        for value in el.attrib.values():
+            image_bytes = _decode_image_data_uri(value)
+            if image_bytes is None:
+                continue
+
+            png_bytes, px_w, px_h = _image_bytes_to_png_with_size(image_bytes)
+            scale = min(max_w / px_w, max_h / px_h)
+            return Image(
+                io.BytesIO(png_bytes),
+                width=px_w * scale,
+                height=px_h * scale,
+            )
+    return None
+
+
+def _decode_image_data_uri(value: str) -> bytes | None:
+    """Decode a base64 image data URI value if present."""
+
+    marker = ";base64,"
+    if not value.startswith("data:image/") or marker not in value:
+        return None
+    return base64.b64decode(value.split(marker, 1)[1])
+
+
+def _image_bytes_to_png_with_size(image_bytes: bytes) -> tuple[bytes, int, int]:
+    """Normalize arbitrary image bytes to PNG bytes plus pixel dimensions."""
+
+    from PIL import Image as PILImage
+
+    with PILImage.open(io.BytesIO(image_bytes)) as pil:
+        has_alpha = pil.mode in {"RGBA", "LA"} or (
+            pil.mode == "P" and "transparency" in pil.info
+        )
+        image = pil.convert("RGBA" if has_alpha else "RGB")
+        px_w, px_h = image.size
+        out = io.BytesIO()
+        image.save(out, format="PNG")
+        return out.getvalue(), px_w, px_h
 
 
 # ----- Public entry point -------------------------------------------------- #

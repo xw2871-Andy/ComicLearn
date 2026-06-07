@@ -20,6 +20,7 @@ in the OpenClaw workspace, ported into the new typed Python pipeline.
 from __future__ import annotations
 
 import io
+import base64
 import textwrap
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
@@ -191,7 +192,11 @@ def _rasterize_svg_to_png(svg_markup: str, *, dpi: int = 144) -> bytes:
     """
 
     # Cheap well-formed-XML check so we surface broken SVGs early.
-    ET.fromstring(svg_markup)
+    root = ET.fromstring(svg_markup)
+
+    embedded = _embedded_image_as_png_from_svg(root)
+    if embedded is not None:
+        return embedded
 
     # Imported lazily so unit tests that never touch this code path don't
     # incur the heavy reportlab/svglib import cost.
@@ -208,6 +213,41 @@ def _rasterize_svg_to_png(svg_markup: str, *, dpi: int = 144) -> bytes:
         # renderPM/rlPyCairo backend. Keep QA non-blocking by sending a simple
         # PNG payload rather than failing before the reviewer can respond.
         return _fallback_svg_preview_png(svg_markup)
+
+
+def _embedded_image_as_png_from_svg(root: ET.Element) -> bytes | None:
+    """Return embedded data-URI image bytes from a Gemini SVG wrapper as PNG."""
+
+    for el in root.iter():
+        for value in el.attrib.values():
+            image_bytes = _decode_image_data_uri(value)
+            if image_bytes is not None:
+                return _image_bytes_to_png(image_bytes)
+    return None
+
+
+def _decode_image_data_uri(value: str) -> bytes | None:
+    """Decode a base64 image data URI value if present."""
+
+    marker = ";base64,"
+    if not value.startswith("data:image/") or marker not in value:
+        return None
+    return base64.b64decode(value.split(marker, 1)[1])
+
+
+def _image_bytes_to_png(image_bytes: bytes) -> bytes:
+    """Normalize arbitrary image bytes to real PNG bytes for Claude vision."""
+
+    from PIL import Image as PILImage
+
+    with PILImage.open(io.BytesIO(image_bytes)) as pil:
+        has_alpha = pil.mode in {"RGBA", "LA"} or (
+            pil.mode == "P" and "transparency" in pil.info
+        )
+        image = pil.convert("RGBA" if has_alpha else "RGB")
+        out = io.BytesIO()
+        image.save(out, format="PNG")
+        return out.getvalue()
 
 
 def _fallback_svg_preview_png(svg_markup: str) -> bytes:
