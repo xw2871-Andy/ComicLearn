@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================ */
+/* Base — whitepaper feel: cream paper, ink type, indigo accents */
+/* ============================================================ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  /* Headings use serif for the "research paper" feel. */
+  h1, h2, h3, h4 {
+    @apply font-serif text-ink;
+  }
+
+  /* Selection color tied to indigo. */
+  ::selection {
+    background: theme("colors.indigo.200");
+    color: theme("colors.ink");
+  }
+
+  /* Subtle focus ring for keyboard nav. */
+  :focus-visible {
+    outline: 2px solid theme("colors.indigo.500");
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+/* ============================================================ */
+/* Components — reused across pages.                             */
+/* ============================================================ */
+
+@layer components {
+  /* Top horizontal rule of dots, like a textbook chapter break. */
+  .rule-dotted {
+    background-image: theme("backgroundImage.rule-dotted");
+    background-size: 6px 6px;
+    height: 6px;
+    width: 100%;
+  }
+
+  /* Standard section wrapper. */
+  .section {
+    @apply container py-20 md:py-28;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted;
+  }
+  .eyebrow::before {
+    content: "";
+    @apply h-px w-8 bg-rule;
+  }
+
+  /* Primary button — solid indigo. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           bg-indigo-600 px-5 py-3 text-sm font-medium text-white
+           transition hover:bg-indigo-700 focus-visible:outline-indigo-600;
+  }
+
+  /* Secondary button — outlined paper card. */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           border border-rule bg-white px-5 py-3 text-sm font-medium text-ink
+           shadow-chip transition hover:border-ink/30 hover:bg-cream;
+  }
+
+  /* "Card" used in feature grids, FAQs, etc. */
+  .card {
+    @apply rounded-paper border border-rule bg-white p-6 shadow-paper;
+  }
+
+  /* Chip / tag. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-rule
+           bg-white px-2.5 py-1 text-xs font-medium text-muted shadow-chip;
+  }
+
+  /* Markdown-style underline used by hero verbs. */
+  .ink-underline {
+    background-image: linear-gradient(transparent 65%, theme("colors.accent") 65%, theme("colors.accent") 88%, transparent 88%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+
+  /* "Page numbers" used as section markers. */
+  .page-no {
+    @apply font-mono text-[0.7rem] uppercase tracking-[0.25em] text-muted;
+  }
+}

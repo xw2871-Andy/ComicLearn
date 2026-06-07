@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ComicTeach Studio</title>
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">C</div>
+      <div class="auth-logo-name">ComicTeach</div>
+    </div>
+    <h1 id="authTitle">Sign in to Studio</h1>
+    <p class="sub" id="authSub">Turn any lesson into a 6-page manga your students will actually read.</p>
+
+    <div id="signupOnly" style="display:none">
+      <label>Display name</label>
+      <input id="suName" placeholder="Andy" />
+    </div>
+    <label>Email</label>
+    <input id="authEmail" type="email" placeholder="you@school.edu" />
+    <label>Password</label>
+    <input id="authPwd" type="password" placeholder="••••••••" minlength="8" />
+
+    <div class="row">
+      <button class="btn accent" id="authSubmit">Sign in</button>
+    </div>
+    <div class="auth-err" id="authErr"></div>
+    <div class="toggle">
+      <span id="toggleHint">No account?</span>
+      <a id="toggleAuth">Create one</a>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" class="app" style="display:none">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">C</div>
+      <div class="brand-text">ComicTeach <span>Studio</span></div>
+    </div>
+    <div class="who" id="who"></div>
+    <div class="new"><button class="btn accent" id="btnNewProject">+ New project</button></div>
+    <div class="lib-title">My projects</div>
+    <div class="lib" id="lib"></div>
+    <div class="foot">
+      <span id="footEnv">SVG backend</span>
+      <a id="btnLogout">Log out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Empty state -->
+    <section id="emptyState" class="empty" style="display:none">
+      <h3>No project selected</h3>
+      <div>Create a project to start generating comic lessons.</div>
+      <button class="btn accent" id="emptyNew">+ New project</button>
+    </section>
+
+    <!-- Studio -->
+    <section id="studio" style="display:none">
+      <div class="page-header">
+        <h2 id="projName">Project</h2>
+        <span class="status-pill" id="projMeta"></span>
+        <div class="grow"></div>
+        <div class="toolbar">
+          <button class="btn ghost small" id="btnEditProject">Edit</button>
+          <button class="btn ghost small" id="btnDeleteProject">Delete</button>
+        </div>
+      </div>
+
+      <div class="gen-grid">
+
+        <!-- Generator -->
+        <div class="card">
+          <h3>New generation</h3>
+
+          <div class="kind-tabs">
+            <button class="tab active" data-kind="topic">Topic</button>
+            <button class="tab" data-kind="markdown">Markdown</button>
+            <button class="tab" data-kind="pdf" disabled title="Coming soon">PDF (soon)</button>
+          </div>
+
+          <div class="field">
+            <label>Title / topic</label>
+            <input id="genTitle" placeholder='e.g. "Riemann Sums"' />
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Grade / course</label>
+              <input id="genGrade" placeholder="AP Calculus AB" />
+            </div>
+            <div class="field">
+              <label>Image backend</label>
+              <select id="genBackend">
+                <option value="svg" selected>SVG (sandbox-safe)</option>
+                <option value="gemini">Gemini Nano Banana 2</option>
+                <option value="mock">Mock (UI demo, recycles showcase pages)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" id="markdownField" style="display:none">
+            <label>Markdown outline</label>
+            <textarea id="genMarkdown" placeholder="Paste your lesson outline as markdown..."></textarea>
+          </div>
+
+          <div class="field check">
+            <input type="checkbox" id="genQA" checked />
+            <label for="genQA" style="text-transform:none; letter-spacing:0; color: var(--ink); margin: 0;">
+              Run visual-QA subagent (re-renders failing panels)
+            </label>
+          </div>
+
+          <button class="btn lime generate-btn" id="btnGenerate">
+            Generate 6-page comic →
+          </button>
+          <div class="auth-err" id="genErr"></div>
+        </div>
+
+        <!-- Run pane -->
+        <div class="run-pane">
+
+          <div class="card">
+            <h3>Pipeline progress</h3>
+            <div class="stepper" id="stepper">
+              <div class="s" data-step="1">1 · Ingest</div>
+              <div class="s" data-step="2">2 · Lesson</div>
+              <div class="s" data-step="3">3 · Storyboard</div>
+              <div class="s" data-step="4">4 · Render</div>
+              <div class="s" data-step="5">5 · QA + PDF</div>
+            </div>
+            <div class="log" id="log"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+              <span class="status-pill queued" id="runStatus">No active run</span>
+              <a id="pdfLink" style="display:none">Download PDF →</a>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Generated pages</h3>
+            <div class="gallery" id="gallery"></div>
+            <p class="empty" id="galleryEmpty" style="padding: 28px 8px;">
+              Panels will appear here as they're rendered.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Run history</h3>
+            <div class="runs-list" id="runs"></div>
+            <p class="empty" id="runsEmpty" style="padding: 16px 8px;">No runs yet.</p>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal: new / edit project -->
+<div class="modal-bg" id="projModal">
+  <div class="modal">
+    <h3 id="projModalTitle">New project</h3>
+    <div class="field"><label>Project name</label><input id="mProjName" placeholder="AP Calc AB · Unit 1"/></div>
+    <div class="field-row">
+      <div class="field"><label>Grade / course</label><input id="mProjGrade" value="AP Calculus AB" /></div>
+      <div class="field"><label>Setting hint (optional)</label><input id="mProjSetting" placeholder="Tokyo middle school" /></div>
+    </div>
+    <div class="field"><label>Cast (comma-separated)</label><input id="mProjCast" value="Doraemon, Nobita"/></div>
+    <div class="actions">
+      <button class="btn ghost" id="mProjCancel">Cancel</button>
+      <button class="btn accent" id="mProjSave">Save</button>
+    </div>
+    <div class="auth-err" id="mProjErr"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

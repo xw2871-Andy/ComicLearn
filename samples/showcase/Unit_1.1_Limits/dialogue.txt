@@ -1,0 +1,23 @@
+Nobita
+Doraemon, I dropped this rock off the cliff, but how fast is it falling right now? Exactly at two seconds?
+
+Doraemon
+That is the perfect question for Calculus, Nobita! To find the speed at an exact instant, we first need to understand average speed. 
+
+Nobita
+Average speed? Like total distance divided by total time?
+
+Doraemon
+Exactly. If the distance the rock falls is y equals sixteen t squared, its average speed between two and three seconds is eighty feet per second. But that is just an average.
+
+Nobita
+Right, it is speeding up the whole time! So how do we get the exact speed at two seconds?
+
+Doraemon
+We shrink the time interval! Instead of one whole second, we look at a tiny interval, h. We calculate the average speed between two and two plus h.
+
+Nobita
+Oh, I see! So the formula becomes sixteen times two plus h squared, minus sixteen times two squared, all over h.
+
+Doraemon
+You are a genius today, Nobita! When we simplify that, we get sixty four plus sixteen h. And as that tiny time interval h approaches zero, the speed becomes exactly sixty four feet per second! That is the instantaneous rate of change.
