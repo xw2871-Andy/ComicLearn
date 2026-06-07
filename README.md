@@ -1,4 +1,4 @@
-# ComicTeach
+# ComicLearn
 
 ComicTeach is the public repository for my ComicLearn prototype: an AI learning
 studio that turns curriculum material into short, teachable comics. It combines
