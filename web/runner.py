@@ -348,10 +348,41 @@ def _run_pipeline(
 
     except Exception as exc:  # pragma: no cover
         tb = traceback.format_exc()
+        message = _friendly_error_message(exc)
         db.update_run(
-            run_id, status="error", error=str(exc), finished_at=db.now_ts()
+            run_id, status="error", error=message, finished_at=db.now_ts()
         )
-        em.emit("error", message=str(exc), traceback=tb)
+        em.emit("error", message=message, traceback=tb)
+
+
+def _friendly_error_message(exc: Exception) -> str:
+    """Turn nested SDK/retry errors into user-actionable Studio messages."""
+
+    root = exc
+    last_attempt = getattr(exc, "last_attempt", None)
+    if last_attempt is not None:
+        try:
+            attempt_exc = last_attempt.exception()
+        except Exception:
+            attempt_exc = None
+        if isinstance(attempt_exc, Exception):
+            root = attempt_exc
+
+    root_name = type(root).__name__
+    root_text = str(root)
+    if root_name == "AuthenticationError":
+        return (
+            "Claude authentication failed. Check your ANTHROPIC_API_KEY in "
+            "`~/ComicTeach/.env`, save the file, then restart `python run_web.py`."
+        )
+    if "ANTHROPIC_API_KEY" in root_text:
+        return (
+            "ANTHROPIC_API_KEY is missing. Add it to `~/ComicTeach/.env`, "
+            "then restart `python run_web.py`."
+        )
+    if root_name in {"PermissionDeniedError", "RateLimitError"}:
+        return f"Claude API error ({root_name}): {root_text}"
+    return root_text
 
 
 # ---- mock runner (always available, for UI dev / sandbox demo) ------------ #

@@ -27,8 +27,8 @@ class Settings:
     def from_env(cls) -> "Settings":
         return cls(
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            reasoning_model=os.getenv("C2C_REASONING_MODEL", "claude-opus-4-7"),
-            visual_model=os.getenv("C2C_VISUAL_MODEL", "claude-opus-4-7"),
+            reasoning_model=os.getenv("C2C_REASONING_MODEL", "claude-sonnet-4-5"),
+            visual_model=os.getenv("C2C_VISUAL_MODEL", "claude-sonnet-4-5"),
             image_backend=os.getenv("IMAGE_BACKEND", "svg").lower(),
             gemini_api_key=os.getenv("GEMINI_API_KEY"),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
