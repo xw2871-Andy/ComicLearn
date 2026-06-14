@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ComicTeach Studio</title>
-<link rel="stylesheet" href="/static/styles.css" />
+<link rel="stylesheet" href="/static/styles.css?v=034" />
 </head>
 <body>
 
@@ -51,7 +51,7 @@
     <div class="lib-title">My projects</div>
     <div class="lib" id="lib"></div>
     <div class="foot">
-      <span id="footEnv">SVG backend</span>
+      <span id="footEnv">…</span>
       <a id="btnLogout">Log out</a>
     </div>
   </aside>
@@ -86,7 +86,7 @@
           <div class="kind-tabs">
             <button class="tab active" data-kind="topic">Topic</button>
             <button class="tab" data-kind="markdown">Markdown</button>
-            <button class="tab" data-kind="pdf" disabled title="Coming soon">PDF (soon)</button>
+            <button class="tab" data-kind="pdf">PDF</button>
           </div>
 
           <div class="field">
@@ -94,19 +94,37 @@
             <input id="genTitle" placeholder='e.g. "Riemann Sums"' />
           </div>
 
+          <div class="field">
+            <label>Grade / course</label>
+            <input id="genGrade" placeholder="AP Calculus AB" />
+          </div>
+
           <div class="field-row">
             <div class="field">
-              <label>Grade / course</label>
-              <input id="genGrade" placeholder="AP Calculus AB" />
-            </div>
-            <div class="field">
-              <label>Image backend</label>
-              <select id="genBackend">
-                <option value="svg" selected>SVG (sandbox-safe)</option>
-                <option value="gemini">Gemini Nano Banana 2</option>
-                <option value="mock">Mock (UI demo, recycles showcase pages)</option>
+              <label>Text engine</label>
+              <select id="genProvider">
+                <option value="auto" selected>Auto (best available)</option>
+                <option value="anthropic">Claude (Anthropic)</option>
+                <option value="gemini">Gemini</option>
               </select>
             </div>
+            <div class="field">
+              <label>Image engine</label>
+              <select id="genBackend">
+                <option value="gemini" selected>Nano Banana Pro (Gemini)</option>
+                <option value="svg">SVG (no image credits)</option>
+                <option value="mock">Mock (UI demo)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Image quality</label>
+            <select id="genQuality">
+              <option value="1K">Draft — 1K (fastest, cheapest)</option>
+              <option value="2K" selected>Standard — 2K (sample-page quality)</option>
+              <option value="4K">Ultra — 4K (print, slowest)</option>
+            </select>
           </div>
 
           <div class="field" id="markdownField" style="display:none">
@@ -114,15 +132,29 @@
             <textarea id="genMarkdown" placeholder="Paste your lesson outline as markdown..."></textarea>
           </div>
 
+          <div id="pdfField" style="display:none">
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="genPdf" accept="application/pdf" hidden />
+              <div class="dz-icon">⇪</div>
+              <div class="dz-text"><b>Drop a textbook / worksheet PDF</b><br/>or click to browse</div>
+              <div class="dz-file" id="dzFile"></div>
+            </div>
+            <div class="field">
+              <label>Page range (optional)</label>
+              <input id="genPages" placeholder="e.g. 380-400" />
+            </div>
+            <div class="hint" id="ocrHint"></div>
+          </div>
+
           <div class="field check">
             <input type="checkbox" id="genQA" checked />
             <label for="genQA" style="text-transform:none; letter-spacing:0; color: var(--ink); margin: 0;">
-              Run visual-QA subagent (re-renders failing panels)
+              Run visual-QA subagent (re-renders failing pages)
             </label>
           </div>
 
           <button class="btn lime generate-btn" id="btnGenerate">
-            Generate 6-page comic →
+            Generate comic lesson →
           </button>
           <div class="auth-err" id="genErr"></div>
         </div>
@@ -135,14 +167,24 @@
             <div class="stepper" id="stepper">
               <div class="s" data-step="1">1 · Ingest</div>
               <div class="s" data-step="2">2 · Lesson</div>
-              <div class="s" data-step="3">3 · Storyboard</div>
-              <div class="s" data-step="4">4 · Render</div>
-              <div class="s" data-step="5">5 · QA + PDF</div>
+              <div class="s" data-step="3">3 · Worksheet</div>
+              <div class="s" data-step="4">4 · Storyboard</div>
+              <div class="s" data-step="5">5 · Story QA</div>
+              <div class="s" data-step="6">6 · Pages</div>
+              <div class="s" data-step="7">7 · Art QA</div>
+              <div class="s" data-step="8">8 · PDF</div>
+            </div>
+            <div class="pagebar" id="pagebar" style="display:none">
+              <span class="pagebar-label" id="pagebarLabel">Drawing page…</span>
+              <div class="pagebar-track"><div class="pagebar-fill" id="pagebarFill"></div></div>
             </div>
             <div class="log" id="log"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+            <div class="run-footer">
               <span class="status-pill queued" id="runStatus">No active run</span>
-              <a id="pdfLink" style="display:none">Download PDF →</a>
+              <div class="dl-links">
+                <a id="worksheetLink" class="dl ghosted" style="display:none">Worksheet (.md)</a>
+                <a id="pdfLink" style="display:none">Download PDF →</a>
+              </div>
             </div>
           </div>
 
@@ -150,7 +192,10 @@
             <h3>Generated pages</h3>
             <div class="gallery" id="gallery"></div>
             <p class="empty" id="galleryEmpty" style="padding: 28px 8px;">
-              Panels will appear here as they're rendered.
+              Pages will appear here one by one as they're drawn.
+            </p>
+            <p class="hint" id="reviseHint" style="display:none; margin-top:12px; margin-bottom:0;">
+              ✎ Click any page to zoom — from there you can request edits and the AI will re-draw just that page.
             </p>
           </div>
 
@@ -186,6 +231,22 @@
   </div>
 </div>
 
-<script src="/static/app.js"></script>
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose">✕</button>
+  <div class="lb-stage">
+    <div class="lb-body" id="lbBody"></div>
+    <div class="lb-edit" id="lbEdit" style="display:none">
+      <h4>✎ Request changes to this page</h4>
+      <p class="lb-edit-sub">Describe what to fix — the AI re-draws just this page, re-runs QA, and rebuilds the PDF.</p>
+      <textarea id="lbFeedback" placeholder="e.g. Doraemon's bell is missing in panel 2; label the graph axes x and y; the second speech bubble overlaps the math overlay — move it up."></textarea>
+      <button class="btn lime" id="lbRevise">Re-draw this page →</button>
+      <div class="lb-edit-msg" id="lbEditMsg"></div>
+    </div>
+  </div>
+  <div class="lb-caption" id="lbCaption"></div>
+</div>
+
+<script src="/static/app.js?v=034"></script>
 </body>
 </html>

@@ -36,7 +36,21 @@ def main() -> int:
     display_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
 
     print(f"ComicTeach Studio · http://{display_host}:{port}")
-    uvicorn.run("web.app:app", host=host, port=port, reload=False, log_level="info")
+    try:
+        uvicorn.run("web.app:app", host=host, port=port, reload=False, log_level="info")
+    except SystemExit:
+        raise
+    except OSError as exc:
+        if "address already in use" in str(exc).lower() or getattr(exc, "errno", None) == 48:
+            print(
+                f"\nPort {port} is already in use — an OLD server is probably "
+                "still running and will keep serving STALE code.\n"
+                f"Kill it first:\n    lsof -ti:{port} | xargs kill -9\n"
+                "then run `python run_web.py` again.",
+                file=sys.stderr,
+            )
+            return 1
+        raise
     return 0
 
 

@@ -27,7 +27,6 @@ from rich.console import Console
 
 from . import __version__
 from .agent import ComicAgent
-from .claude_client import ClaudeClient
 from .extractors import from_markdown, from_pdf, from_topic
 
 console = Console()
@@ -47,6 +46,16 @@ def _shared(f):
         "--grade",
         required=True,
         help="Grade level / course, e.g. 'AP Calculus AB', '7th-grade Math'.",
+    )(f)
+    f = click.option(
+        "--provider",
+        type=click.Choice(["auto", "anthropic", "gemini"]),
+        default="auto",
+        show_default=True,
+        help=(
+            "Text/reasoning provider for lesson plan, worksheet, storyboard, "
+            "and QA. Image generation always uses Gemini Nano Banana Pro."
+        ),
     )(f)
     f = click.option(
         "--cast",
@@ -119,6 +128,7 @@ def _shared(f):
 def topic_cmd(
     topic: str,
     grade: str,
+    provider: str,
     cast: tuple[str, ...],
     setting: str | None,
     references: tuple[Path, ...],
@@ -129,7 +139,7 @@ def topic_cmd(
 ) -> None:
     """Generate a comic from just a topic + grade level."""
 
-    agent = _agent(out_dir, cast, setting, references, no_chain, no_qa, qa_retries)
+    agent = _agent(out_dir, provider, cast, setting, references, no_chain, no_qa, qa_retries)
     inp = from_topic(topic, grade)
     result = agent.run(inp)
     _success(result.book.pdf_path)
@@ -143,6 +153,7 @@ def markdown_cmd(
     path: Path,
     topic: str | None,
     grade: str,
+    provider: str,
     cast: tuple[str, ...],
     setting: str | None,
     references: tuple[Path, ...],
@@ -153,7 +164,7 @@ def markdown_cmd(
 ) -> None:
     """Generate a comic from a markdown / text lesson outline."""
 
-    agent = _agent(out_dir, cast, setting, references, no_chain, no_qa, qa_retries)
+    agent = _agent(out_dir, provider, cast, setting, references, no_chain, no_qa, qa_retries)
     inp = from_markdown(path, topic, grade)
     result = agent.run(inp)
     _success(result.book.pdf_path)
@@ -173,6 +184,7 @@ def pdf_cmd(
     topic: str,
     pages: str | None,
     grade: str,
+    provider: str,
     cast: tuple[str, ...],
     setting: str | None,
     references: tuple[Path, ...],
@@ -181,16 +193,21 @@ def pdf_cmd(
     qa_retries: int,
     out_dir: Path | None,
 ) -> None:
-    """Generate a comic from a textbook PDF page range."""
+    """Generate a comic from a textbook PDF page range.
 
-    agent = _agent(out_dir, cast, setting, references, no_chain, no_qa, qa_retries)
+    Uses Mathpix OCR when MATHPIX_APP_ID/MATHPIX_APP_KEY are configured
+    (best for math), else local pdfplumber extraction.
+    """
+
+    agent = _agent(out_dir, provider, cast, setting, references, no_chain, no_qa, qa_retries)
     page_range = _parse_pages(pages) if pages else None
     inp = from_pdf(
         path,
         topic=topic,
         grade_level=grade,
         page_range=page_range,
-        claude=ClaudeClient(),
+        client=agent.claude,
+        on_status=lambda msg: console.print(f"  [dim]{msg}[/dim]"),
     )
     result = agent.run(inp)
     _success(result.book.pdf_path)
@@ -201,6 +218,7 @@ def pdf_cmd(
 
 def _agent(
     out_dir: Path | None,
+    provider: str,
     cast: tuple[str, ...],
     setting: str | None,
     references: tuple[Path, ...],
@@ -210,6 +228,7 @@ def _agent(
 ) -> ComicAgent:
     return ComicAgent(
         output_dir=out_dir,
+        provider=provider,
         cast=list(cast) if cast else None,
         setting_hint=setting,
         reference_paths=list(references) if references else None,

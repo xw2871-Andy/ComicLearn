@@ -1,27 +1,68 @@
-"""Step 3: Render each :class:`Scene` as a comic panel.
+"""Step 3: Render each :class:`Scene` as a comic page.
 
 Two backends ship today:
 
-- ``svg``: Claude authors raw SVG vector art (free, no extra API key).
-- ``gemini``: Google Nano Banana 2 (``gemini-3.1-flash-image-preview``) produces
-  photorealistic anime panels and supports reference-image conditioning for
-  visual consistency across all 6 panels of a comic.
+- ``gemini`` (default): Google Nano Banana Pro (``gemini-3-pro-image-preview``)
+  produces publication-quality manga pages and supports reference-image
+  conditioning for visual consistency across all 6 pages of a comic.
+- ``svg``: the text model authors raw SVG vector art (free, no image credits).
 
-Other backends (OpenAI gpt-image, Replicate SDXL) are placeholders for future
-work behind the same :class:`IllustratorBackend` protocol.
+Pages are rendered strictly ONE BY ONE — each page waits for the previous
+page so it can be passed as a rolling reference. Never parallelize this.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import textwrap
+import time
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 
-from .claude_client import ClaudeClient
 from .config import SETTINGS
 from .models import Panel, Scene, Storyboard
 from .prompts import SVG_PANEL_SYSTEM
+
+
+def _render_with_retry(
+    backend: "IllustratorBackend",
+    scene: Scene,
+    art_style: str,
+    cast: list[str],
+    *,
+    on_status: Callable[[str], None] | None = None,
+) -> Panel:
+    """Render one page, surviving TRANSIENT failures (network blips, brief
+    API 5xx/outage) with exponential backoff.
+
+    The image backend already does a few fast internal retries; this adds an
+    OUTER layer with longer sleeps so a multi-second outage doesn't discard
+    the whole chapter's completed lesson/worksheet/storyboard work. Tunable
+    via ``C2C_RENDER_RETRIES`` (default 4) and ``C2C_RENDER_BACKOFF`` seconds
+    (default 20, doubled each attempt)."""
+
+    attempts = max(1, int(os.getenv("C2C_RENDER_RETRIES", "4")))
+    backoff = float(os.getenv("C2C_RENDER_BACKOFF", "20"))
+    last_exc: Exception | None = None
+    for i in range(1, attempts + 1):
+        try:
+            return backend.render(scene, art_style, cast)
+        except Exception as exc:  # transient network/API failure
+            last_exc = exc
+            if i >= attempts:
+                break
+            wait = backoff * (2 ** (i - 1))
+            if on_status:
+                on_status(
+                    f"page {scene.number}: render attempt {i}/{attempts} "
+                    f"failed ({type(exc).__name__}); retrying in {wait:.0f}s"
+                )
+            time.sleep(wait)
+    raise RuntimeError(
+        f"page {scene.number} render failed after {attempts} attempts: "
+        f"{type(last_exc).__name__}: {last_exc}"
+    ) from last_exc
 
 
 class IllustratorBackend(Protocol):
@@ -36,13 +77,16 @@ class IllustratorBackend(Protocol):
 
 
 # --------------------------------------------------------------------------- #
-# Default backend: Claude-authored SVG.
+# SVG backend: text model authors vector art.
 # --------------------------------------------------------------------------- #
 
 
 class ClaudeSVGBackend:
-    def __init__(self, claude: ClaudeClient, model: str | None = None) -> None:
-        self._claude = claude
+    """SVG vector panels authored by the configured text model
+    (Claude or Gemini — both expose ``complete``)."""
+
+    def __init__(self, client, model: str | None = None) -> None:
+        self._client = client
         self._model = model or SETTINGS.visual_model
 
     def render(
@@ -56,13 +100,16 @@ class ClaudeSVGBackend:
         user_msg = _format_panel_brief(
             scene, art_style=art_style, cast=cast, extra_hints=extra_hints
         )
-        raw = self._claude.complete(
+        kwargs = dict(
             system=SVG_PANEL_SYSTEM,
             user=user_msg,
-            model=self._model,
             max_tokens=4096,
             temperature=0.6,
         )
+        # Only pass the Anthropic model override to the Anthropic client.
+        if type(self._client).__name__ == "ClaudeClient":
+            kwargs["model"] = self._model
+        raw = self._client.complete(**kwargs)
         svg = _extract_svg(raw) or _fallback_svg(scene)
         return Panel(
             scene_number=scene.number,
@@ -153,10 +200,11 @@ def _fallback_svg(scene: Scene) -> str:
 
 
 def get_backend(
-    claude: ClaudeClient,
+    client,
     *,
     reference_paths: list[Path] | None = None,
     chain_panels: bool = True,
+    resolution: str | None = None,
 ) -> IllustratorBackend:
     """Return the configured backend, honoring ``IMAGE_BACKEND``.
 
@@ -164,32 +212,45 @@ def get_backend(
     backends (currently the Gemini one); the SVG backend ignores them.
     """
 
-    backend = SETTINGS.image_backend
+    # Read the live env first: the web runner switches backends per run by
+    # setting IMAGE_BACKEND after SETTINGS was frozen at import time.
+    import os
+
+    backend = os.getenv("IMAGE_BACKEND", SETTINGS.image_backend).lower()
     if backend == "svg":
-        return ClaudeSVGBackend(claude)
-    if backend in {"gemini", "nano-banana", "nano_banana"}:
+        return ClaudeSVGBackend(client)
+    if backend in {"gemini", "nano-banana", "nano_banana", "nano-banana-pro"}:
         # Imported lazily so users without a Gemini key never hit this code path.
         from .image_backends.gemini_nano_banana import GeminiNanoBananaBackend
 
         return GeminiNanoBananaBackend(
             reference_paths=reference_paths or [],
             chain_panels=chain_panels,
+            resolution=resolution,
         )
     raise NotImplementedError(
         f"IMAGE_BACKEND={backend!r} is not implemented yet. "
-        "Supported values: 'svg' (default, no extra API), "
-        "'gemini' (Google Nano Banana 2 via GEMINI_API_KEY)."
+        "Supported values: 'gemini' (Nano Banana Pro via GEMINI_API_KEY, "
+        "default) and 'svg' (vector panels, no extra API)."
     )
 
 
 def render_storyboard(
     storyboard: Storyboard,
-    claude: ClaudeClient,
+    client,
     *,
     reference_paths: list[Path] | None = None,
     chain_panels: bool = True,
+    on_panel: Callable[[Panel], None] | None = None,
+    on_status: Callable[[str], None] | None = None,
+    resolution: str | None = None,
 ) -> tuple[list[Panel], IllustratorBackend]:
-    """Render every scene and return ``(panels, backend)``.
+    """Render every scene SEQUENTIALLY and return ``(panels, backend)``.
+
+    Pages are generated one at a time, in scene order, so each request can
+    carry the previous page as a consistency reference. ``on_panel`` is
+    invoked after each page completes (used by the web runner to stream
+    per-page progress to the browser).
 
     The backend is returned so callers (e.g. the QA-driven retry loop in the
     orchestrator) can call ``backend.render(...)`` again on individual scenes
@@ -197,11 +258,21 @@ def render_storyboard(
     """
 
     backend = get_backend(
-        claude,
+        client,
         reference_paths=reference_paths,
         chain_panels=chain_panels,
+        resolution=resolution,
     )
     panels: list[Panel] = []
     for scene in storyboard.scenes:
-        panels.append(backend.render(scene, storyboard.art_style, storyboard.cast))
+        panel = _render_with_retry(
+            backend,
+            scene,
+            storyboard.art_style,
+            storyboard.cast,
+            on_status=on_status,
+        )
+        panels.append(panel)
+        if on_panel is not None:
+            on_panel(panel)
     return panels, backend

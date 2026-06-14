@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from .claude_client import ClaudeClient
 from .models import CurriculumInput, Lesson
 from .prompts import LESSON_PLANNER_SYSTEM
 
 
-def build_lesson(curriculum: CurriculumInput, claude: ClaudeClient) -> Lesson:
+def build_lesson(curriculum: CurriculumInput, claude) -> Lesson:
+    """``claude`` is any text client (Anthropic or Gemini) from
+    :func:`curriculum_to_comic.llm.get_text_client`."""
     user_msg = _format_user_prompt(curriculum)
     data = claude.complete_json(
         system=LESSON_PLANNER_SYSTEM,
         user=user_msg,
-        max_tokens=6000,
+        max_tokens=12000,
         temperature=0.4,
     )
     # Backfill the grade level if the model omits it.

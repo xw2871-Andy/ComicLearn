@@ -9,6 +9,21 @@ venv/
 build/
 dist/
 *.egg-info/
-outputs/runs/
 .pytest_cache/
 .ruff_cache/
+
+# Generated run outputs (large, regenerable — not source)
+outputs/
+Chapter_1_Limits/_runs/
+Thomas_Tests/
+Thomas_Sections/
+eval_runs/
+
+# Copyrighted source material — never commit the textbook
+source_materials/
+
+# Tuning backups (keep the live tuning/*.md, drop the .bak snapshots)
+tuning/*.bak
+tuning/*.md.bak
+tuning/
+*.bak

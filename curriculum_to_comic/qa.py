@@ -2,9 +2,10 @@
 
 After the illustrator renders each panel, this subagent:
 
-1. Rasterizes the panel's SVG into a PNG using svglib + reportlab.renderPM
-   (the same path the PDF compiler uses, so we judge what the reader will see).
-2. Sends that PNG plus a structured "scene brief" to Claude vision.
+1. Rasterizes the panel's SVG into a PNG (Gemini-generated pages embed the
+   raw PNG, which is extracted directly; authored SVGs go through svglib).
+2. Sends that PNG plus a structured "scene brief" to the configured vision
+   model — Claude OR Gemini, whichever text provider the run selected.
 3. Receives a strict-JSON :class:`PanelQAReport` verdict on six axes:
    style match, visual density, scene fidelity, dialogue bubble readability,
    math overlay visibility, and series consistency.
@@ -25,9 +26,11 @@ import textwrap
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
+from concurrent.futures import ThreadPoolExecutor
+
 from pydantic import ValidationError
 
-from .claude_client import ClaudeClient
+from .config import SETTINGS
 from .models import Panel, PanelQAReport, Scene, Storyboard
 from .prompts import QA_REVIEWER_SYSTEM
 
@@ -35,6 +38,15 @@ from .prompts import QA_REVIEWER_SYSTEM
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
+
+# Marker for "the REVIEW itself errored" (placeholder score 50). These reports
+# describe a broken reviewer call, not a bad page — so they must trigger a
+# review retry, never an image regeneration.
+REVIEW_ERROR_PREFIX = "QA reviewer call failed"
+
+
+def is_review_error(report: PanelQAReport) -> bool:
+    return any(i.startswith(REVIEW_ERROR_PREFIX) for i in report.issues)
 
 
 @dataclass
@@ -51,20 +63,20 @@ class StoryboardQAAgent:
 
     Parameters
     ----------
-    claude:
-        Shared :class:`ClaudeClient` (vision-capable).
+    client:
+        Shared vision-capable text client (Anthropic ``ClaudeClient`` or
+        ``GeminiTextClient`` — both expose ``complete_json_with_image``).
     model:
-        Optional override for the Claude model used in vision calls. Defaults
-        to whatever ``SETTINGS.reasoning_model`` is in the env.
+        Optional model override for the vision calls.
     """
 
     def __init__(
         self,
-        claude: ClaudeClient,
+        client,
         *,
         model: str | None = None,
     ) -> None:
-        self._claude = claude
+        self._claude = client
         self._model = model
 
     # ----- One panel at a time --------------------------------------------- #
@@ -89,7 +101,9 @@ class StoryboardQAAgent:
                 user_text=brief,
                 image_bytes=png_bytes,
                 model=self._model,
-                max_tokens=1024,
+                # Generous budget: thinking models (Gemini 3.x) spend output
+                # tokens on reasoning before the JSON appears.
+                max_tokens=3000,
                 temperature=0.1,
             )
             # The reviewer is supposed to echo scene_number, but if it
@@ -109,7 +123,7 @@ class StoryboardQAAgent:
                 characters_present=True,
                 dialogue_bubbles_readable=True,
                 math_overlay_ok=True,
-                issues=[f"QA reviewer call failed: {type(exc).__name__}: {exc}"],
+                issues=[f"{REVIEW_ERROR_PREFIX}: {type(exc).__name__}: {exc}"],
                 suggestions=[],
             )
 
@@ -122,23 +136,36 @@ class StoryboardQAAgent:
         self,
         storyboard: Storyboard,
         panels: list[Panel],
+        *,
+        max_workers: int = 4,
     ) -> list[PanelReview]:
-        """Review every panel in a storyboard and return paired verdicts."""
+        """Review every panel and return paired verdicts (in scene order).
+
+        Reviews run CONCURRENTLY (they are independent vision calls), unlike
+        page rendering which must stay sequential for visual consistency.
+        """
 
         panels_by_num = {p.scene_number: p for p in panels}
-        results: list[PanelReview] = []
-        for scene in storyboard.scenes:
-            panel = panels_by_num.get(scene.number)
-            if panel is None:
-                continue
+        jobs = [
+            (scene, panels_by_num[scene.number])
+            for scene in storyboard.scenes
+            if scene.number in panels_by_num
+        ]
+
+        def _one(job) -> PanelReview:
+            scene, panel = job
             report = self.review(
                 scene=scene,
                 panel=panel,
                 art_style=storyboard.art_style,
                 cast=storyboard.cast,
             )
-            results.append(PanelReview(scene=scene, panel=panel, report=report))
-        return results
+            return PanelReview(scene=scene, panel=panel, report=report)
+
+        if len(jobs) <= 1:
+            return [_one(j) for j in jobs]
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(jobs))) as ex:
+            return list(ex.map(_one, jobs))
 
 
 # --------------------------------------------------------------------------- #
@@ -197,6 +224,15 @@ def _rasterize_svg_to_png(svg_markup: str, *, dpi: int = 144) -> bytes:
     embedded = _embedded_image_as_png_from_svg(root)
     if embedded is not None:
         return embedded
+
+    # Prefer cairosvg when installed — it renders authored SVGs much more
+    # faithfully than svglib/renderPM.
+    try:
+        import cairosvg  # type: ignore
+
+        return cairosvg.svg2png(bytestring=svg_markup.encode("utf-8"))
+    except Exception:
+        pass
 
     # Imported lazily so unit tests that never touch this code path don't
     # incur the heavy reportlab/svglib import cost.
@@ -273,6 +309,23 @@ def _fallback_svg_preview_png(svg_markup: str) -> bytes:
     out = io.BytesIO()
     image.save(out, format="PNG")
     return out.getvalue()
+
+
+def needs_regeneration(
+    report: PanelQAReport, threshold: int | None = None
+) -> bool:
+    """True when a page should be re-rendered: hard "fail" verdict OR a
+    consistency score below the threshold (default 80, configurable via
+    ``C2C_QA_SCORE_THRESHOLD``).
+
+    Review-error reports (placeholder score 50) are excluded — those mean the
+    REVIEW broke, not the page; callers should retry the review instead of
+    burning image credits."""
+
+    if is_review_error(report):
+        return False
+    thr = SETTINGS.qa_score_threshold if threshold is None else threshold
+    return report.verdict == "fail" or report.consistency_score < thr
 
 
 def format_qa_suggestion_hint(report: PanelQAReport) -> str:

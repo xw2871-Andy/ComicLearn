@@ -27,20 +27,34 @@ class ClaudeClient:
         max_tokens: int = 4096,
         temperature: float = 0.7,
     ) -> str:
-        """Single-turn completion. Returns the text content."""
+        """Single-turn completion. Returns the text content.
 
-        resp = self._client.messages.create(
-            model=model or SETTINGS.reasoning_model,
-            system=system,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[{"role": "user", "content": user}],
-        )
-        parts: list[str] = []
-        for block in resp.content:
-            if getattr(block, "type", None) == "text":
-                parts.append(block.text)
-        return "".join(parts).strip()
+        Truncation-aware: if the response stops because it hit the token
+        cap (``stop_reason == "max_tokens"``), the call is retried with a
+        doubled budget (up to 16K) so long JSON payloads — dense lesson
+        plans from textbook extracts — never come back half-finished.
+        """
+
+        budget = max_tokens
+        text = ""
+        for _attempt in range(3):
+            resp = self._client.messages.create(
+                model=model or SETTINGS.reasoning_model,
+                system=system,
+                max_tokens=budget,
+                temperature=temperature,
+                messages=[{"role": "user", "content": user}],
+            )
+            parts: list[str] = []
+            for block in resp.content:
+                if getattr(block, "type", None) == "text":
+                    parts.append(block.text)
+            text = "".join(parts).strip()
+            if getattr(resp, "stop_reason", None) == "max_tokens" and budget < 16000:
+                budget = min(budget * 2, 16000)
+                continue
+            return text
+        return text
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def complete_with_image(
@@ -89,6 +103,73 @@ class ClaudeClient:
                 parts.append(block.text)
         return "".join(parts).strip()
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+    def complete_with_images(
+        self,
+        *,
+        system: str,
+        user_text: str,
+        images: list[bytes],
+        media_type: str = "image/png",
+        model: str | None = None,
+        max_tokens: int = 3000,
+        temperature: float = 0.2,
+    ) -> str:
+        """Multimodal completion with MANY images (labeled Page 1..N).
+
+        Used by the book-level consistency reviewer, which judges all pages
+        of a comic together for character/style drift.
+        """
+
+        content: list[dict[str, Any]] = []
+        for i, img in enumerate(images, start=1):
+            content.append({"type": "text", "text": f"Page {i}:"})
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": base64.b64encode(img).decode("ascii"),
+                    },
+                }
+            )
+        content.append({"type": "text", "text": user_text})
+        resp = self._client.messages.create(
+            model=model or SETTINGS.reasoning_model,
+            system=system,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=[{"role": "user", "content": content}],
+        )
+        parts: list[str] = []
+        for block in resp.content:
+            if getattr(block, "type", None) == "text":
+                parts.append(block.text)
+        return "".join(parts).strip()
+
+    def complete_json_with_images(
+        self,
+        *,
+        system: str,
+        user_text: str,
+        images: list[bytes],
+        media_type: str = "image/png",
+        model: str | None = None,
+        max_tokens: int = 3000,
+        temperature: float = 0.2,
+    ) -> dict[str, Any]:
+        raw = self.complete_with_images(
+            system=system,
+            user_text=user_text,
+            images=images,
+            media_type=media_type,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return _parse_json_lenient(raw)
+
     def complete_json_with_image(
         self,
         *,
@@ -109,7 +190,26 @@ class ClaudeClient:
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return _parse_json_lenient(raw)
+        try:
+            return _parse_json_lenient(raw)
+        except ValueError:
+            repaired = self.complete(
+                system=(
+                    "You repair malformed model output into one complete, "
+                    "valid JSON object. Return only JSON. Do not use markdown "
+                    "fences. Preserve all existing fields and complete any "
+                    "truncated arrays or strings with reasonable concise values."
+                ),
+                user=(
+                    "This response was supposed to be one JSON object but is "
+                    f"malformed or truncated:\n\n{raw}\n\n"
+                    "Return the complete valid JSON object now."
+                ),
+                model=model,
+                max_tokens=3000,
+                temperature=0,
+            )
+            return _parse_json_lenient(repaired)
 
     def complete_json(
         self,
@@ -153,7 +253,7 @@ class ClaudeClient:
                     "Return one complete valid JSON object now."
                 ),
                 model=model,
-                max_tokens=max(max_tokens, 6000),
+                max_tokens=min(16000, max(max_tokens * 2, 12000)),
                 temperature=0,
             )
             return _parse_json_lenient(repaired)

@@ -25,12 +25,14 @@ runnable product.
 ## Product Flow
 
 ```
-Input lesson
-  -> lesson plan extraction
-  -> six-scene storyboard
+Input lesson (topic / markdown / textbook PDF)
+  -> lesson plan extraction          (Claude or Gemini)
+  -> student worksheet (markdown)    (Claude or Gemini)
+  -> six-scene storyboard            (Claude or Gemini)
   -> dialogue script
-  -> panel rendering
-  -> visual QA and optional rerender
+  -> page rendering, ONE page at a time with rolling style references
+                                     (Nano Banana Pro / gemini-3-pro-image-preview)
+  -> visual QA subagent + rerender   (Claude or Gemini vision)
   -> printable comic PDF
 ```
 
@@ -38,14 +40,16 @@ Supported inputs:
 
 - Topic prompt, such as `Riemann Sums`
 - Markdown or plain-text lesson outline
-- Textbook PDF page range through the CLI
+- Textbook PDF — uploaded in the web studio or via the CLI. Extracted with
+  Mathpix OCR (LaTeX-accurate math) when configured, else pdfplumber.
 
 Generated artifacts:
 
 - `lesson.json`
+- `worksheet.md` (student-facing, downloadable in the studio)
 - `storyboard.json`
 - `dialogue.txt`
-- panel images
+- page images
 - `qa_reports.json`
 - final comic PDF
 - `book.json` run manifest
@@ -109,14 +113,21 @@ Create `.env` from `.env.example`.
 
 | Variable | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Required for lesson planning, storyboarding, SVG rendering, and visual QA |
-| `GEMINI_API_KEY` | Optional image backend for Nano Banana/Gemini image generation |
-| `IMAGE_BACKEND` | `svg`, `gemini`, or mock/demo modes where supported |
+| `TEXT_PROVIDER` | `auto`, `anthropic`, or `gemini` — which model writes the lesson plan, worksheet, storyboard, and runs visual QA. Also selectable per run in the studio UI |
+| `ANTHROPIC_API_KEY` | Optional. Enables Claude as the text/QA provider |
+| `GEMINI_API_KEY` | **Required for image generation** (Nano Banana Pro). Also enables Gemini as the text/QA provider |
+| `GEMINI_IMAGE_MODEL` | Defaults to `gemini-3-pro-image-preview` (Nano Banana Pro) |
+| `GEMINI_IMAGE_RESOLUTION` | `1K`, `2K` (default), or `4K` page renders |
+| `MATHPIX_APP_ID` / `MATHPIX_APP_KEY` | Optional. Mathpix OCR for textbook PDF input (clean LaTeX math) |
+| `IMAGE_BACKEND` | `gemini` (default), `svg`, or mock/demo modes where supported |
 | `C2C_OUTPUT_DIR` | Output folder for generated runs |
 | `C2C_DB_PATH` | SQLite path for the web studio |
 
-The default SVG path is the most reliable local demo because it does not require
-image generation credits.
+At least one of `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` must be set; a
+Gemini-only setup runs the entire pipeline (text + QA + images) on Gemini.
+Every page render is anchored to the authentic Doraemon sample pages in
+`samples/references/doraemon_style_ref_*.jpg`, plus the previously generated
+page, so the whole book stays on-model and consistent.
 
 ## Repository Map
 

@@ -1,11 +1,13 @@
 """High-level orchestrator that ties the pipeline steps together.
 
-Pipeline (one Claude/Gemini call per step):
+Pipeline (text steps run on Claude OR Gemini, selected per run):
 
-    1. Lesson plan       (Claude JSON)
-    2. Storyboard        (Claude JSON, 6 scenes)
-    3. Panel rendering   (SVG via Claude OR PNG via Gemini Nano Banana 2)
-    3.5 Visual QA loop   (Claude vision reviews each panel; failed panels are
+    1. Lesson plan       (text model, JSON)
+    1.5 Worksheet        (text model, student-facing Markdown)
+    2. Storyboard        (text model, JSON, 6 scenes)
+    3. Page rendering    (Nano Banana Pro PNG, one page at a time,
+                         OR SVG via the text model)
+    3.5 Visual QA loop   (vision reviewer judges each page; failed pages are
                          re-rendered with the reviewer's suggestions appended)
     4. PDF compile       (ReportLab + svglib)
 """
@@ -18,14 +20,21 @@ from pathlib import Path
 
 from rich.console import Console
 
-from .claude_client import ClaudeClient
 from .compiler import compile_pdf
 from .config import SETTINGS
 from .illustrator import render_storyboard
 from .lesson import build_lesson
+from .llm import get_text_client
 from .models import ComicBook, CurriculumInput, Lesson, Panel, PanelQAReport, Storyboard
-from .qa import PanelReview, StoryboardQAAgent, format_qa_suggestion_hint
+from .qa import (
+    PanelReview,
+    StoryboardQAAgent,
+    format_qa_suggestion_hint,
+    needs_regeneration,
+)
+from .story_qa import review_and_fix
 from .storyboard import build_storyboard
+from .worksheet import build_worksheet
 
 console = Console()
 
@@ -37,6 +46,7 @@ class AgentResult:
     panels: list[Panel]
     book: ComicBook
     qa_reports: list[PanelQAReport] = field(default_factory=list)
+    worksheet_path: str | None = None
 
 
 class ComicAgent:
@@ -54,17 +64,26 @@ class ComicAgent:
 
     def __init__(
         self,
-        claude: ClaudeClient | None = None,
+        claude=None,
         output_dir: Path | None = None,
         *,
+        provider: str | None = None,
         cast: list[str] | None = None,
         setting_hint: str | None = None,
         reference_paths: list[Path] | None = None,
         chain_panels: bool = True,
         run_qa: bool = True,
         qa_retries: int = 1,
+        image_quality: str | None = None,
+        run_story_qa: bool = True,
+        compile_pdf_output: bool = True,
     ) -> None:
-        self.claude = claude or ClaudeClient()
+        # `claude` keeps backwards compatibility; any text client works.
+        self.claude = claude or get_text_client(provider)
+        self.provider = SETTINGS.resolve_text_provider(provider)
+        self.image_quality = image_quality
+        self.run_story_qa = run_story_qa
+        self.compile_pdf_output = compile_pdf_output
         self.output_dir = Path(output_dir or SETTINGS.default_output_dir).expanduser()
         self.cast = cast
         self.setting_hint = setting_hint
@@ -79,9 +98,13 @@ class ComicAgent:
         run_dir = self._make_run_dir(curriculum.title)
         console.rule(f"[bold cyan]curriculum-to-comic | {curriculum.title}")
 
-        step_count = 5 if self.run_qa else 4
+        step_count = 6 if self.run_qa else 5
+        provider_label = self.provider
 
-        console.print(f"[cyan]Step 1/{step_count}[/cyan] Extracting lesson plan with Claude...")
+        console.print(
+            f"[cyan]Step 1/{step_count}[/cyan] Extracting lesson plan "
+            f"({provider_label})..."
+        )
         lesson = build_lesson(curriculum, self.claude)
         (run_dir / "lesson.json").write_text(
             lesson.model_dump_json(indent=2), encoding="utf-8"
@@ -89,13 +112,41 @@ class ComicAgent:
         console.print(f"  -> [green]{len(lesson.sections)} sections[/green] "
                       f"({lesson.unit_label})")
 
-        console.print(f"[cyan]Step 2/{step_count}[/cyan] Writing 6-scene storyboard...")
+        console.print(
+            f"[cyan]Step 2/{step_count}[/cyan] Writing student worksheet..."
+        )
+        worksheet_md = build_worksheet(lesson, self.claude)
+        worksheet_path = run_dir / "worksheet.md"
+        worksheet_path.write_text(worksheet_md, encoding="utf-8")
+        console.print(f"  -> [green]worksheet.md[/green] saved")
+
+        console.print(f"[cyan]Step 3/{step_count}[/cyan] Writing 6-scene storyboard...")
         storyboard = build_storyboard(
             lesson,
             self.claude,
             cast=self.cast,
             setting_hint=self.setting_hint,
         )
+        if self.run_story_qa:
+            console.print(
+                "  [cyan]·[/cyan] Story editor reviewing narrative flow..."
+            )
+            storyboard, story_report = review_and_fix(
+                lesson,
+                storyboard,
+                self.claude,
+                cast=self.cast,
+                setting_hint=self.setting_hint,
+            )
+            (run_dir / "story_qa.json").write_text(
+                __import__("json").dumps(story_report.to_dict(), indent=2),
+                encoding="utf-8",
+            )
+            label = "revised" if story_report.revised else "kept"
+            console.print(
+                f"  -> story flow score [bold]{story_report.final_flow_score}"
+                f"[/bold] ({label})"
+            )
         (run_dir / "storyboard.json").write_text(
             storyboard.model_dump_json(indent=2), encoding="utf-8"
         )
@@ -110,7 +161,7 @@ class ComicAgent:
         if self.chain_panels and backend_label != "svg":
             ref_label += " + rolling self-reference"
         console.print(
-            f"[cyan]Step 3/{step_count}[/cyan] Rendering panels via "
+            f"[cyan]Step 4/{step_count}[/cyan] Rendering pages one by one via "
             f"[bold]{backend_label}[/bold] backend{ref_label}..."
         )
         panels_dir = run_dir / "panels"
@@ -120,6 +171,7 @@ class ComicAgent:
             self.claude,
             reference_paths=self.reference_paths,
             chain_panels=self.chain_panels,
+            resolution=self.image_quality,
         )
         self._write_panels(panels, panels_dir)
         console.print(f"  -> [green]{len(panels)} panels[/green] saved to "
@@ -129,7 +181,7 @@ class ComicAgent:
         qa_reports: list[PanelQAReport] = []
         if self.run_qa:
             console.print(
-                f"[cyan]Step 4/{step_count}[/cyan] QA reviewer judging each panel "
+                f"[cyan]Step 5/{step_count}[/cyan] QA reviewer judging each panel "
                 f"(up to {self.qa_retries} retry/retries per failing panel)..."
             )
             qa = StoryboardQAAgent(self.claude)
@@ -145,17 +197,100 @@ class ComicAgent:
             )
             self._print_qa_summary(qa_reports)
 
+            # Book-level consistency review: all pages judged side by side
+            # for character drift, garbled text, and visual storytelling.
+            from .book_qa import best_page_png, pages_to_regenerate, review_book
+
+            console.print("  [cyan]·[/cyan] Book reviewer judging all pages side by side...")
+            book_rep = review_book(storyboard, panels, self.claude)
+            if book_rep.error:
+                console.print(f"  [yellow]book review skipped: {book_rep.error}[/yellow]")
+            else:
+                console.print(
+                    f"  -> book consistency [bold]{book_rep.consistency_score}[/bold] "
+                    f"· best page {book_rep.best_page}"
+                )
+                flagged = pages_to_regenerate(book_rep)
+                if flagged:
+                    console.print(
+                        f"  [yellow]redrawing {len(flagged)} page(s) for "
+                        f"cross-page consistency[/yellow]"
+                    )
+                    anchor = best_page_png(book_rep, panels)
+                    panels_map = {p.scene_number: p for p in panels}
+                    reports_map = {r.scene_number: r for r in qa_reports}
+                    scenes_map = {s.number: s for s in storyboard.scenes}
+                    for pr in flagged:
+                        num = int(pr.get("page", 0) or 0)
+                        scene = scenes_map.get(num)
+                        if scene is None:
+                            continue
+                        hints = (
+                            "BOOK CONSISTENCY FIXES (must apply): "
+                            + (pr.get("regen_hints")
+                               or "; ".join(pr.get("issues", [])[:4]))
+                        )
+                        if anchor is not None and hasattr(backend, "_last_panel_png"):
+                            backend._last_panel_png = anchor
+                        try:
+                            new_panel = backend.render(
+                                scene, storyboard.art_style, storyboard.cast,
+                                extra_hints=hints,
+                            )
+                        except Exception as exc:  # pragma: no cover
+                            console.print(f"    [red]page {num} redraw failed: {exc}[/red]")
+                            continue
+                        new_report = qa.review(
+                            scene=scene, panel=new_panel,
+                            art_style=storyboard.art_style,
+                            cast=storyboard.cast, retry_count=2,
+                        )
+                        new_report.retry_count = 2
+                        # KEEP-BETTER guard: discard a redraw that regresses.
+                        old_score = reports_map[num].consistency_score
+                        if new_report.consistency_score < old_score:
+                            console.print(
+                                f"    -> page {num} redraw scored "
+                                f"{new_report.consistency_score} < {old_score}; "
+                                f"keeping original"
+                            )
+                            continue
+                        panels_map[num] = new_panel
+                        reports_map[num] = new_report
+                        book_rep.regenerated_pages.append(num)
+                        console.print(
+                            f"    -> page {num} redrawn: "
+                            f"[{_color(new_report.verdict)}]{new_report.verdict}[/] "
+                            f"score={new_report.consistency_score}"
+                        )
+                    panels = [panels_map[s.number] for s in storyboard.scenes
+                              if s.number in panels_map]
+                    qa_reports = [reports_map[s.number] for s in storyboard.scenes
+                                  if s.number in reports_map]
+                    self._write_panels(panels, panels_dir)
+                    (run_dir / "qa_reports.json").write_text(
+                        _dump_reports_json(qa_reports), encoding="utf-8"
+                    )
+            import json as _json_mod
+
+            (run_dir / "book_qa.json").write_text(
+                _json_mod.dumps(book_rep.to_dict(), indent=2), encoding="utf-8"
+            )
+
         final_step = step_count
-        console.print(f"[cyan]Step {final_step}/{step_count}[/cyan] Compiling final PDF comic book...")
         pdf_path = run_dir / f"{_slug(lesson.title)}_comic.pdf"
-        compile_pdf(
-            pdf_path=pdf_path,
-            lesson=lesson,
-            storyboard=storyboard,
-            panels=panels,
-            qa_reports=qa_reports,
-        )
-        console.print(f"  -> [bold green]PDF ready:[/bold green] {pdf_path}")
+        if self.compile_pdf_output:
+            console.print(f"[cyan]Step {final_step}/{step_count}[/cyan] Compiling final PDF comic book...")
+            compile_pdf(
+                pdf_path=pdf_path,
+                lesson=lesson,
+                storyboard=storyboard,
+                panels=panels,
+                qa_reports=qa_reports,
+            )
+            console.print(f"  -> [bold green]PDF ready:[/bold green] {pdf_path}")
+        else:
+            console.print("  -> [dim]PDF compile skipped (components-only mode)[/dim]")
 
         book = ComicBook(
             title=lesson.title,
@@ -176,6 +311,7 @@ class ComicAgent:
             panels=panels,
             book=book,
             qa_reports=qa_reports,
+            worksheet_path=str(worksheet_path),
         )
 
     # ----- QA helpers ----------------------------------------------------- #
@@ -205,12 +341,16 @@ class ComicAgent:
         reviews_by_num = {r.scene.number: r for r in reviews}
 
         for attempt in range(1, self.qa_retries + 1):
-            failing = [r for r in reviews_by_num.values() if r.report.verdict == "fail"]
+            failing = [
+                r for r in reviews_by_num.values()
+                if needs_regeneration(r.report)
+            ]
             if not failing:
                 break
             console.print(
                 f"  [yellow]Retry pass {attempt}/{self.qa_retries}[/yellow]: "
-                f"re-rendering {len(failing)} failing panel(s)..."
+                f"re-rendering {len(failing)} panel(s) "
+                f"(verdict=fail or score<{SETTINGS.qa_score_threshold})..."
             )
             for r in failing:
                 scene = scenes_by_num[r.scene.number]
@@ -239,6 +379,16 @@ class ComicAgent:
                 # Belt-and-suspenders: ensure retry_count reflects this pass
                 # even if the reviewer subagent forgot to honor the kwarg.
                 new_report.retry_count = attempt
+                # KEEP-BETTER guard: a redraw that scores lower than the page
+                # it replaces is discarded, so quality only ratchets upward.
+                old_score = reviews_by_num[scene.number].report.consistency_score
+                if new_report.consistency_score < old_score:
+                    console.print(
+                        f"    -> scene {scene.number} redraw scored "
+                        f"{new_report.consistency_score} < {old_score}; "
+                        f"keeping original"
+                    )
+                    continue
                 reviews_by_num[scene.number] = PanelReview(
                     scene=scene, panel=new_panel, report=new_report
                 )

@@ -4,23 +4,22 @@ from __future__ import annotations
 
 import json
 
-from .claude_client import ClaudeClient
 from .models import Lesson, Storyboard
-from .prompts import STORYBOARD_SYSTEM
+from .prompts import STORYBOARD_SYSTEM, load_tuning
 
 
 def build_storyboard(
     lesson: Lesson,
-    claude: ClaudeClient,
+    claude,
     *,
     cast: list[str] | None = None,
     setting_hint: str | None = None,
 ) -> Storyboard:
     user_msg = _format_user_prompt(lesson, cast=cast, setting_hint=setting_hint)
     data = claude.complete_json(
-        system=STORYBOARD_SYSTEM,
+        system=STORYBOARD_SYSTEM + load_tuning("storyboard"),
         user=user_msg,
-        max_tokens=8000,
+        max_tokens=12000,
         temperature=0.7,
     )
     data.setdefault("lesson_title", lesson.title)

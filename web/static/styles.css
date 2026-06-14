@@ -627,3 +627,207 @@ input, select, textarea, button { font: inherit; color: inherit; }
   justify-content: flex-end;
   margin-top: 18px;
 }
+
+/* ---------------------------------------------------------------- PDF dropzone */
+.dropzone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 22px 14px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color .15s, background .15s;
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--ink);
+  background: var(--lime-bg);
+}
+.dropzone.has-file { border-style: solid; border-color: #bef264; background: var(--lime-bg); }
+.dropzone .dz-icon { font-size: 22px; color: var(--faint); }
+.dropzone .dz-text { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 4px; }
+.dropzone .dz-text b { color: var(--ink); }
+.dropzone .dz-file { font-size: 12px; color: #4d7c0f; font-weight: 600; margin-top: 6px; word-break: break-all; }
+
+.hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- Page progress bar */
+.pagebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pagebar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4d7c0f;
+  white-space: nowrap;
+}
+.pagebar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.pagebar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--lime);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+
+/* ---------------------------------------------------------------- Download links */
+.dl-links { display: flex; gap: 8px; align-items: center; }
+#worksheetLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color .15s;
+}
+#worksheetLink:hover { border-color: var(--ink); text-decoration: none; }
+
+/* ---------------------------------------------------------------- QA badges */
+.qa-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  display: none;
+}
+.qa-badge.pass { display: inline-block; background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
+.qa-badge.warn { display: inline-block; background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a; }
+.qa-badge.fail { display: inline-block; background: var(--err-bg); color: var(--err); border: 1px solid #fecaca; }
+
+.tile { cursor: zoom-in; }
+.tile .meta .cap {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.runs-list .ri.active {
+  border-color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.log .l.qa { color: var(--blue); }
+
+/* ---------------------------------------------------------------- Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,.78);
+  backdrop-filter: blur(8px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 32px;
+}
+.lightbox.open { display: flex; }
+.lightbox .lb-stage {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  max-width: 94vw;
+}
+.lightbox .lb-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 12px 60px rgba(0,0,0,.4);
+  align-self: center;
+}
+.lightbox .lb-edit h4 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -.3px;
+}
+.lightbox .lb-edit .lb-edit-sub {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.lightbox .lb-edit textarea {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+  min-height: 130px;
+  resize: vertical;
+  outline: none;
+}
+.lightbox .lb-edit textarea:focus { border-color: var(--ink); }
+.lightbox .lb-edit-msg { font-size: 12px; color: var(--warn); min-height: 1em; }
+@media (max-width: 860px) {
+  .lightbox .lb-stage { flex-direction: column; overflow-y: auto; max-height: 90vh; }
+  .lightbox .lb-edit { width: auto; }
+}
+.lightbox .lb-body {
+  max-width: min(760px, 92vw);
+  max-height: 84vh;
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 12px 60px rgba(0,0,0,.4);
+}
+.lightbox .lb-body img,
+.lightbox .lb-body object {
+  display: block;
+  max-width: min(760px, 92vw);
+  max-height: 84vh;
+  width: auto;
+  height: auto;
+}
+.lightbox .lb-caption {
+  color: #e5e7eb;
+  font-size: 13px;
+  margin-top: 12px;
+  text-align: center;
+  max-width: 80vw;
+}
+.lightbox .lb-close {
+  position: absolute;
+  top: 18px; right: 22px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.lightbox .lb-close:hover { background: rgba(255,255,255,.25); }

@@ -64,12 +64,16 @@ CREATE TABLE IF NOT EXISTS runs (
     grade_level   TEXT NOT NULL,
     source_kind   TEXT NOT NULL,          -- topic | markdown | pdf
     source_text   TEXT,                   -- markdown/topic preview
-    backend       TEXT NOT NULL,          -- svg | gemini
+    source_path   TEXT,                   -- uploaded source file (pdf runs)
+    backend       TEXT NOT NULL,          -- gemini | svg | mock
+    provider      TEXT NOT NULL DEFAULT 'auto',  -- auto | anthropic | gemini
+    image_quality TEXT NOT NULL DEFAULT '2K',    -- 1K | 2K | 4K
     run_qa        INTEGER NOT NULL DEFAULT 1,
     status        TEXT NOT NULL,          -- queued | running | done | error
     error         TEXT,
     run_dir       TEXT,                   -- absolute path to outputs/runs/<ts>_<slug>
     pdf_path      TEXT,
+    worksheet_path TEXT,
     created_at    INTEGER NOT NULL,
     finished_at   INTEGER
 );
@@ -107,8 +111,24 @@ def init_db() -> None:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(DB_PATH) as conn:
             conn.executescript(SCHEMA)
+            _migrate(conn)
             conn.commit()
         _INITIALIZED = True
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns introduced after the first release (idempotent)."""
+
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(runs)").fetchall()}
+    migrations = {
+        "source_path": "ALTER TABLE runs ADD COLUMN source_path TEXT",
+        "provider": "ALTER TABLE runs ADD COLUMN provider TEXT NOT NULL DEFAULT 'auto'",
+        "worksheet_path": "ALTER TABLE runs ADD COLUMN worksheet_path TEXT",
+        "image_quality": "ALTER TABLE runs ADD COLUMN image_quality TEXT NOT NULL DEFAULT '2K'",
+    }
+    for col, ddl in migrations.items():
+        if col not in cols:
+            conn.execute(ddl)
 
 
 @contextmanager
@@ -280,16 +300,21 @@ def create_run(
     source_text: str | None,
     backend: str,
     run_qa: bool,
+    provider: str = "auto",
+    source_path: str | None = None,
+    image_quality: str = "2K",
 ) -> dict:
     rid = new_id("run_")
     with connect() as c:
         c.execute(
             "INSERT INTO runs(id, project_id, user_id, title, grade_level, "
-            "source_kind, source_text, backend, run_qa, status, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?)",
+            "source_kind, source_text, source_path, backend, provider, "
+            "image_quality, run_qa, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?)",
             (
                 rid, project_id, user_id, title, grade_level,
-                source_kind, source_text, backend, 1 if run_qa else 0, now_ts(),
+                source_kind, source_text, source_path, backend, provider,
+                image_quality, 1 if run_qa else 0, now_ts(),
             ),
         )
         c.execute(
@@ -305,7 +330,7 @@ def update_run(run_id: str, **fields: Any) -> None:
     cols = []
     vals: list[Any] = []
     for k, v in fields.items():
-        if k in {"status", "error", "run_dir", "pdf_path", "finished_at"}:
+        if k in {"status", "error", "run_dir", "pdf_path", "worksheet_path", "finished_at"}:
             cols.append(f"{k} = ?")
             vals.append(v)
     if not cols:
@@ -337,6 +362,17 @@ def list_runs(project_id: str, user_id: int, limit: int = 50) -> list[dict]:
 
 
 # ----- Events ---------------------------------------------------------------- #
+
+
+def max_event_seq(run_id: str) -> int:
+    """Highest event seq for a run (0 when none) — lets a revision pass
+    continue the event stream without colliding with replayed history."""
+
+    with connect() as c:
+        row = c.execute(
+            "SELECT MAX(seq) FROM events WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        return int(row[0] or 0)
 
 
 def append_event(run_id: str, seq: int, kind: str, payload: dict) -> None:

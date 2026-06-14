@@ -3,17 +3,17 @@
 Supported inputs:
 - ``topic``: a short string + grade level (no file).
 - ``markdown``: path to a ``.md`` / ``.txt`` file.
-- ``pdf``: path to a textbook PDF. We extract text with pdfplumber and optionally
-  ask Claude to narrow it down to the topic the user cares about.
+- ``pdf``: path to a textbook PDF. Text is extracted with Mathpix OCR when
+  ``MATHPIX_APP_ID``/``MATHPIX_APP_KEY`` are configured (best for math —
+  preserves LaTeX), falling back to local pdfplumber extraction otherwise.
+  Long extracts are optionally narrowed to the requested topic by the text
+  model (Claude or Gemini).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pdfplumber
-
-from .claude_client import ClaudeClient
 from .models import CurriculumInput
 from .prompts import PDF_EXTRACT_SYSTEM
 
@@ -49,19 +49,36 @@ def from_pdf(
     grade_level: str,
     *,
     page_range: tuple[int, int] | None = None,
-    claude: ClaudeClient | None = None,
+    claude=None,
+    client=None,
     max_chars: int = 18_000,
+    on_status=None,
 ) -> CurriculumInput:
     """Extract text from a textbook PDF.
 
-    If a topic is given and the raw extract is long, we ask Claude to focus on
-    the topic-relevant pages.
+    Mathpix OCR is used when configured (LaTeX-accurate math), else
+    pdfplumber. If a topic is given and the raw extract is long, we ask the
+    text model to focus on the topic-relevant pages.
+
+    ``client`` (or legacy alias ``claude``) may be any text client from
+    :func:`curriculum_to_comic.llm.get_text_client`. ``on_status`` is an
+    optional ``callable(str)`` used to surface progress messages.
     """
 
-    raw = _extract_pdf_text(path, page_range=page_range)
+    llm = client or claude
+    notify = on_status or (lambda _msg: None)
+
+    raw = _extract_pdf_text(path, page_range=page_range, notify=notify)
+    if not raw.strip():
+        raise RuntimeError(
+            "No text could be extracted from this PDF. If it is a scanned "
+            "document, configure MATHPIX_APP_ID / MATHPIX_APP_KEY for OCR."
+        )
+
     relevant = raw
-    if len(raw) > max_chars and topic and claude is not None:
-        relevant = claude.complete(
+    if len(raw) > max_chars and topic and llm is not None:
+        notify("Narrowing the extract to the requested topic…")
+        relevant = llm.complete(
             system=PDF_EXTRACT_SYSTEM,
             user=(
                 f"Topic of interest: {topic}\n"
@@ -82,9 +99,31 @@ def from_pdf(
 
 
 def _extract_pdf_text(
+    path: Path,
+    page_range: tuple[int, int] | None = None,
+    notify=lambda _msg: None,
+) -> str:
+    """Extract PDF text: Mathpix OCR when configured, else pdfplumber."""
+
+    from . import mathpix
+
+    if mathpix.mathpix_available():
+        try:
+            notify("Extracting PDF with Mathpix OCR (LaTeX-accurate math)…")
+            return mathpix.extract_pdf_markdown(path, page_range=page_range)
+        except mathpix.MathpixError as exc:
+            notify(f"Mathpix failed ({exc}); falling back to local extraction.")
+
+    notify("Extracting PDF text locally with pdfplumber…")
+    return _pdfplumber_text(path, page_range=page_range)
+
+
+def _pdfplumber_text(
     path: Path, page_range: tuple[int, int] | None = None
 ) -> str:
     """Pure-python PDF text extraction via pdfplumber."""
+
+    import pdfplumber
 
     chunks: list[str] = []
     with pdfplumber.open(str(path)) as pdf:

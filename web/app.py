@@ -35,9 +35,12 @@ from fastapi import (
     Cookie,
     Depends,
     FastAPI,
+    File,
+    Form,
     HTTPException,
     Request,
     Response,
+    UploadFile,
     status,
 )
 from fastapi.responses import (
@@ -72,7 +75,9 @@ if ENV_PATH.exists():
         os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-app = FastAPI(title="ComicTeach Studio", version="0.1.0")
+APP_VERSION = "0.3.3"
+
+app = FastAPI(title="ComicTeach Studio", version=APP_VERSION)
 
 # Initialize DB on first import so the first request doesn't pay the cost.
 db.init_db()
@@ -219,7 +224,9 @@ class RunCreateBody(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     grade_level: str | None = None
     source_text: str | None = None
-    backend: str = Field(default="svg", pattern="^(svg|gemini|mock)$")
+    backend: str = Field(default="gemini", pattern="^(svg|gemini|mock)$")
+    provider: str = Field(default="auto", pattern="^(auto|anthropic|gemini)$")
+    image_quality: str = Field(default="2K", pattern="^(1K|2K|4K)$")
     run_qa: bool = True
 
 
@@ -247,7 +254,9 @@ def api_create_run(
         source_kind=body.source_kind,
         source_text=body.source_text,
         backend=body.backend,
+        provider=body.provider,
         run_qa=body.run_qa,
+        image_quality=body.image_quality,
     )
 
     if body.backend == "mock":
@@ -262,12 +271,142 @@ def api_create_run(
             source_kind=body.source_kind,
             source_text=body.source_text,
             backend=body.backend,
+            provider=body.provider,
             run_qa=body.run_qa,
             cast=proj["cast"],
             setting_hint=proj.get("setting_hint"),
             output_root=OUTPUT_ROOT,
+            image_quality=body.image_quality,
         )
     return {"run": run}
+
+
+@app.post("/api/projects/{project_id}/runs/pdf")
+async def api_create_pdf_run(
+    project_id: str,
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    grade_level: str = Form(""),
+    pages: str = Form(""),
+    backend: str = Form("gemini"),
+    provider: str = Form("auto"),
+    image_quality: str = Form("2K"),
+    run_qa: bool = Form(True),
+    user: dict = Depends(require_user),
+) -> dict:
+    """Create a run from an uploaded textbook/worksheet PDF.
+
+    The PDF is stored under outputs/runs/_uploads/, then extracted (Mathpix
+    OCR when configured, else pdfplumber) and fed through the same
+    worksheet → storyboard → pages pipeline.
+    """
+
+    proj = db.get_project(project_id, int(user["id"]))
+    if proj is None:
+        raise HTTPException(404, "Project not found")
+    title = title.strip()
+    if not title:
+        raise HTTPException(400, "Topic / title is required")
+    if backend not in {"svg", "gemini", "mock"}:
+        raise HTTPException(400, "Bad backend")
+    if provider not in {"auto", "anthropic", "gemini"}:
+        raise HTTPException(400, "Bad provider")
+    if image_quality not in {"1K", "2K", "4K"}:
+        raise HTTPException(400, "Bad image quality")
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(400, "Please upload a .pdf file")
+
+    contents = await file.read()
+    if len(contents) > 50 * 1024 * 1024:
+        raise HTTPException(400, "PDF is too large (max 50 MB)")
+
+    page_range: tuple[int, int] | None = None
+    pages = (pages or "").strip()
+    if pages:
+        try:
+            lo, hi = pages.split("-", 1)
+            page_range = (int(lo), int(hi))
+        except ValueError:
+            raise HTTPException(400, "Pages must look like '380-400'")
+
+    grade = (grade_level or proj["grade_level"] or "").strip()
+
+    run = db.create_run(
+        project_id=project_id,
+        user_id=int(user["id"]),
+        title=title,
+        grade_level=grade,
+        source_kind="pdf",
+        source_text=f"[uploaded pdf] {file.filename}"
+        + (f" · pages {pages}" if pages else ""),
+        backend=backend,
+        provider=provider,
+        run_qa=run_qa,
+        image_quality=image_quality,
+    )
+
+    upload_dir = OUTPUT_ROOT / "runs" / "_uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = upload_dir / f"{run['id']}.pdf"
+    pdf_path.write_bytes(contents)
+
+    if backend == "mock":
+        runner.start_mock_run(
+            run_id=run["id"], title=title, output_root=OUTPUT_ROOT
+        )
+        return {"run": run}
+
+    runner.start_run(
+        run_id=run["id"],
+        title=title,
+        grade_level=grade,
+        source_kind="pdf",
+        source_text=None,
+        backend=backend,
+        provider=provider,
+        run_qa=run_qa,
+        cast=proj["cast"],
+        setting_hint=proj.get("setting_hint"),
+        output_root=OUTPUT_ROOT,
+        source_path=str(pdf_path),
+        page_range=page_range,
+        image_quality=image_quality,
+    )
+    return {"run": run}
+
+
+class ReviseBody(BaseModel):
+    scene: int = Field(ge=1, le=12)
+    feedback: str = Field(min_length=3, max_length=2000)
+
+
+@app.post("/api/runs/{run_id}/revise")
+def api_revise_run(
+    run_id: str, body: ReviseBody, user: dict = Depends(require_user)
+) -> dict:
+    """Teacher feedback loop: re-draw one page of a finished run with the
+    teacher's notes, re-QA it, and recompile the PDF."""
+
+    run = db.get_run(run_id, int(user["id"]))
+    if run is None:
+        raise HTTPException(404, "Run not found")
+    if run["status"] != "done":
+        raise HTTPException(409, "Run is not finished yet — wait for it to complete.")
+    if run["backend"] == "mock":
+        raise HTTPException(400, "Mock runs can't be revised (no real pages).")
+    if not run.get("run_dir") or not Path(run["run_dir"]).exists():
+        raise HTTPException(410, "This run's files are no longer on disk.")
+
+    runner.start_revision(
+        run_id=run_id,
+        scene_number=body.scene,
+        feedback=body.feedback.strip(),
+        output_root=OUTPUT_ROOT,
+        provider=run.get("provider") or "auto",
+        backend=run["backend"],
+        run_qa=bool(run.get("run_qa", 1)),
+    )
+    return {"ok": True, "run_id": run_id, "scene": body.scene}
 
 
 @app.get("/api/runs/{run_id}")
@@ -382,8 +521,26 @@ def root() -> HTMLResponse:
 def health() -> dict:
     return {
         "ok": True,
+        "version": APP_VERSION,
         "output_root": str(OUTPUT_ROOT),
         "db_path": str(db.DB_PATH),
+    }
+
+
+# Capability discovery for the frontend (which keys are configured).
+@app.get("/api/config")
+def api_config() -> dict:
+    return {
+        "app_version": APP_VERSION,
+        "providers": {
+            "anthropic": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "gemini": bool(os.environ.get("GEMINI_API_KEY")),
+        },
+        "mathpix": bool(
+            os.environ.get("MATHPIX_APP_ID") and os.environ.get("MATHPIX_APP_KEY")
+        ),
+        "default_backend": os.environ.get("IMAGE_BACKEND", "gemini"),
+        "image_model": os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image-preview"),
     }
 
 
