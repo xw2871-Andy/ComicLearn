@@ -17,8 +17,6 @@ export function CTA() {
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Link
             href={site.links.studio}
-            target="_blank"
-            rel="noreferrer"
             className="btn-primary"
           >
             Open Studio

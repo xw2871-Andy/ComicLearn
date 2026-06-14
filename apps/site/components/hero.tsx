@@ -42,8 +42,6 @@ export function Hero() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href={site.links.studio}
-                target="_blank"
-                rel="noreferrer"
                 className="btn-primary"
               >
                 Launch Studio

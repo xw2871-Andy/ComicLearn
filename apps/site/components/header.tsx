@@ -41,7 +41,7 @@ export function Header() {
             <Github className="h-4 w-4" />
             Star on GitHub
           </Link>
-          <Link href={site.links.studio} target="_blank" rel="noreferrer" className="btn-primary px-4 py-2 text-xs">
+          <Link href={site.links.studio} className="btn-primary px-4 py-2 text-xs">
             Open Studio
           </Link>
         </div>

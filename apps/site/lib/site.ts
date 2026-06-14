@@ -18,9 +18,7 @@ export const site = {
     photo: "/founder.svg"
   },
   links: {
-    studio:
-      process.env.NEXT_PUBLIC_STUDIO_URL ??
-      "https://whose-attributes-park-twice.trycloudflare.com",
+    studio: "/studio",
     github: "https://github.com/xw2871-Andy/ComicLearn",
     discord: "https://discord.gg/sUZPnP7P",
     twitter: "https://twitter.com/comiclearn",

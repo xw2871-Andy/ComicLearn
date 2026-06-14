@@ -23,8 +23,6 @@ export default function DocsPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href={site.links.studio}
-            target="_blank"
-            rel="noreferrer"
             className="btn-primary"
           >
             Open Studio
@@ -49,7 +47,7 @@ export default function DocsPage() {
             Go to the studio link, create an account, and enter the invite code
             you received. You do not need to clone GitHub or paste API keys.
           </p>
-          <Code>{site.links.studio}</Code>
+          <Code>{`${site.url}${site.links.studio}`}</Code>
         </Step>
 
         <Step n="02" title="Create a project">

@@ -1,4 +1,4 @@
-/* ComicTeach Studio SPA */
+/* ComicLearn Studio SPA */
 (() => {
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -56,8 +56,8 @@
 
   function setAuthMode(mode) {
     authMode = mode;
-    $("#authTitle").textContent = mode === "login" ? "Sign in to Comic Studio"
-                                                   : "Create your Comic Studio account";
+    $("#authTitle").textContent = mode === "login" ? "Sign in to ComicLearn Studio"
+                                                   : "Create your ComicLearn Studio account";
     $("#authSub").textContent = mode === "login"
       ? "Build full 6-page comic book lessons from any topic, outline, or textbook PDF."
       : "Free during the research preview. No credit card.";

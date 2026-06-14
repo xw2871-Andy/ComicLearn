@@ -22,7 +22,7 @@ export function Footer() {
           </div>
 
           <FooterCol title="Product">
-            <FooterLink href={site.links.studio} external>Open Studio</FooterLink>
+            <FooterLink href={site.links.studio}>Open Studio</FooterLink>
             <FooterLink href="/#how-it-works">How it works</FooterLink>
             <FooterLink href="/#features">Features</FooterLink>
             <FooterLink href="/#showcase">Showcase</FooterLink>

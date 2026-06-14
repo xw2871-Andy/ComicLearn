@@ -63,10 +63,12 @@ and `colors.accent`).
 ```bash
 NEXT_PUBLIC_SITE_DOMAIN=comiclearn.dpdns.org
 NEXT_PUBLIC_SITE_URL=https://comiclearn.dpdns.org
-NEXT_PUBLIC_STUDIO_URL=https://your-hosted-studio-url
+STUDIO_ORIGIN=https://your-hosted-studio-origin
 ```
 
-4. Deploy. Every push to `main` will redeploy the site.
+4. Deploy. The website serves the studio at `/studio` and proxies `/api/*`,
+   `/static/*`, and `/assets/*` to `STUDIO_ORIGIN`. Every push to `main` will
+   redeploy the site.
 
 ### DigitalPlat FreeDomain
 
