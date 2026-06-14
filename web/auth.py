@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import re
 import secrets
 from typing import Tuple
@@ -60,10 +61,39 @@ class AuthError(Exception):
     pass
 
 
-def signup(email: str, display_name: str, password: str) -> Tuple[int, str]:
+def enforce_signup_policy(email: str, access_code: str | None) -> None:
+    """Gate who may register, for hosted deployments where the owner pays for
+    API usage. Controlled entirely by environment variables so local/dev runs
+    stay open by default:
+
+    - ``SIGNUP_INVITE_CODE``         : if set, the request must supply a matching code.
+    - ``SIGNUP_ALLOWED_EMAIL_DOMAINS``: if set (comma-separated), the email's
+                                        domain must be on the list.
+
+    Raises ``AuthError`` when signup is not permitted.
+    """
+
+    required_code = (os.getenv("SIGNUP_INVITE_CODE") or "").strip()
+    if required_code:
+        supplied = (access_code or "").strip()
+        if not hmac.compare_digest(supplied, required_code):
+            raise AuthError("This studio is invite-only. A valid access code is required.")
+
+    domains_raw = (os.getenv("SIGNUP_ALLOWED_EMAIL_DOMAINS") or "").strip()
+    if domains_raw:
+        allowed = {d.strip().lower().lstrip("@") for d in domains_raw.split(",") if d.strip()}
+        domain = (email or "").strip().lower().rsplit("@", 1)[-1]
+        if domain not in allowed:
+            raise AuthError("Sign-ups are limited to approved email domains.")
+
+
+def signup(
+    email: str, display_name: str, password: str, access_code: str | None = None
+) -> Tuple[int, str]:
     """Create a user + first session token. Returns (user_id, session_token)."""
 
     email = (email or "").strip().lower()
+    enforce_signup_policy(email, access_code)
     display_name = (display_name or "").strip() or email.split("@", 1)[0]
     if not is_valid_email(email):
         raise AuthError("Please provide a valid email address.")

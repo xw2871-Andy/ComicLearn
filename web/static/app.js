@@ -74,11 +74,12 @@
     const email = $("#authEmail").value.trim();
     const password = $("#authPwd").value;
     const display_name = $("#suName").value.trim();
+    const access_code = $("#suCode").value.trim();
     $("#authErr").textContent = "";
     try {
       const body = authMode === "login"
         ? { email, password }
-        : { email, password, display_name };
+        : { email, password, display_name, access_code };
       const path = authMode === "login" ? "/api/login" : "/api/signup";
       const r = await api(path, { method: "POST", body: JSON.stringify(body) });
       state.me = r.user;

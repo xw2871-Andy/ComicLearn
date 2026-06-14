@@ -25,7 +25,7 @@ Input (topic | markdown | textbook PDF)
 - Dual text/vision provider: **Anthropic Claude OR Google Gemini**, selectable
   per run (UI dropdown, `--provider`, `TEXT_PROVIDER`). Gemini-only setups run
   the entire pipeline end to end.
-- Image model upgraded to **Nano Banana Pro** (`gemini-3-pro-image-preview`),
+- Image model upgraded to **Nano Banana Pro** (`gemini-3-pro-image`),
   4:5, with a per-run quality switch: **1K draft / 2K standard / 4K print**.
 - Robustness: truncation-aware retries on both clients (long lesson JSON no
   longer comes back half-finished), JSON-repair fallback, and automatic

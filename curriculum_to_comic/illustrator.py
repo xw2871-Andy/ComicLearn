@@ -2,7 +2,7 @@
 
 Two backends ship today:
 
-- ``gemini`` (default): Google Nano Banana Pro (``gemini-3-pro-image-preview``)
+- ``gemini`` (default): Google Nano Banana Pro (``gemini-3-pro-image``)
   produces publication-quality manga pages and supports reference-image
   conditioning for visual consistency across all 6 pages of a comic.
 - ``svg``: the text model authors raw SVG vector art (free, no image credits).

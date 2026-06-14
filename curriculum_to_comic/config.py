@@ -12,10 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Nano Banana Pro == Gemini 3 Pro Image Preview.
-DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview"
+DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image"
 # Default Gemini text/vision model for lesson, storyboard, and QA when the
 # text provider is 'gemini'.
-DEFAULT_GEMINI_TEXT_MODEL = "gemini-3.1-pro-preview"
+DEFAULT_GEMINI_TEXT_MODEL = "gemini-3.5-flash"
 
 
 @dataclass(frozen=True)
@@ -42,8 +42,8 @@ class Settings:
         return cls(
             text_provider=os.getenv("TEXT_PROVIDER", "auto").lower(),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            reasoning_model=os.getenv("C2C_REASONING_MODEL", "claude-sonnet-4-5"),
-            visual_model=os.getenv("C2C_VISUAL_MODEL", "claude-sonnet-4-5"),
+            reasoning_model=os.getenv("C2C_REASONING_MODEL", "claude-opus-4-8"),
+            visual_model=os.getenv("C2C_VISUAL_MODEL", "claude-opus-4-8"),
             gemini_api_key=os.getenv("GEMINI_API_KEY"),
             gemini_text_model=os.getenv(
                 "GEMINI_TEXT_MODEL", DEFAULT_GEMINI_TEXT_MODEL

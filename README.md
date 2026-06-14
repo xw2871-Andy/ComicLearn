@@ -31,7 +31,7 @@ Input lesson (topic / markdown / textbook PDF)
   -> six-scene storyboard            (Claude or Gemini)
   -> dialogue script
   -> page rendering, ONE page at a time with rolling style references
-                                     (Nano Banana Pro / gemini-3-pro-image-preview)
+                                     (Nano Banana Pro / gemini-3-pro-image)
   -> visual QA subagent + rerender   (Claude or Gemini vision)
   -> printable comic PDF
 ```
@@ -116,7 +116,7 @@ Create `.env` from `.env.example`.
 | `TEXT_PROVIDER` | `auto`, `anthropic`, or `gemini` — which model writes the lesson plan, worksheet, storyboard, and runs visual QA. Also selectable per run in the studio UI |
 | `ANTHROPIC_API_KEY` | Optional. Enables Claude as the text/QA provider |
 | `GEMINI_API_KEY` | **Required for image generation** (Nano Banana Pro). Also enables Gemini as the text/QA provider |
-| `GEMINI_IMAGE_MODEL` | Defaults to `gemini-3-pro-image-preview` (Nano Banana Pro) |
+| `GEMINI_IMAGE_MODEL` | Defaults to `gemini-3-pro-image` (Nano Banana Pro) |
 | `GEMINI_IMAGE_RESOLUTION` | `1K`, `2K` (default), or `4K` page renders |
 | `MATHPIX_APP_ID` / `MATHPIX_APP_KEY` | Optional. Mathpix OCR for textbook PDF input (clean LaTeX math) |
 | `IMAGE_BACKEND` | `gemini` (default), `svg`, or mock/demo modes where supported |

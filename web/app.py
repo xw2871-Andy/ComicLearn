@@ -75,7 +75,7 @@ if ENV_PATH.exists():
         os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-APP_VERSION = "0.3.3"
+APP_VERSION = "0.4.0"
 
 app = FastAPI(title="ComicTeach Studio", version=APP_VERSION)
 
@@ -112,6 +112,35 @@ def _set_session_cookie(resp: Response, token: str) -> None:
     )
 
 
+# ----- usage budget (hosted, owner-pays protection) ------------------------ #
+
+MAX_RUNS_PER_USER_PER_DAY = int(os.environ.get("MAX_RUNS_PER_USER_PER_DAY", "10"))
+MAX_RUNS_GLOBAL_PER_DAY = int(os.environ.get("MAX_RUNS_GLOBAL_PER_DAY", "100"))
+
+
+def enforce_run_budget(user: dict) -> None:
+    """Cap generation runs per rolling 24h — per user and globally — so a
+    hosted deployment on the owner's keys can't be drained. Set either env var
+    to 0 to disable that cap (the default for local use is effectively open)."""
+
+    since = db.now_ts() - 86_400
+    if MAX_RUNS_PER_USER_PER_DAY > 0:
+        used = db.count_runs_since(since, user_id=int(user["id"]))
+        if used >= MAX_RUNS_PER_USER_PER_DAY:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Daily limit reached ({MAX_RUNS_PER_USER_PER_DAY} comics/day). "
+                "Please try again tomorrow.",
+            )
+    if MAX_RUNS_GLOBAL_PER_DAY > 0:
+        total = db.count_runs_since(since)
+        if total >= MAX_RUNS_GLOBAL_PER_DAY:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "The studio is at today's global capacity. Please try again later.",
+            )
+
+
 # --------------------------- auth routes ----------------------------------- #
 
 
@@ -119,6 +148,7 @@ class SignupBody(BaseModel):
     email: str
     display_name: str | None = None
     password: str
+    access_code: str | None = None
 
 
 class LoginBody(BaseModel):
@@ -129,7 +159,9 @@ class LoginBody(BaseModel):
 @app.post("/api/signup")
 def api_signup(body: SignupBody, response: Response) -> dict:
     try:
-        uid, token = auth.signup(body.email, body.display_name or "", body.password)
+        uid, token = auth.signup(
+            body.email, body.display_name or "", body.password, body.access_code
+        )
     except auth.AuthError as exc:
         raise HTTPException(400, str(exc)) from exc
     _set_session_cookie(response, token)
@@ -244,6 +276,7 @@ def api_create_run(
     proj = db.get_project(project_id, int(user["id"]))
     if proj is None:
         raise HTTPException(404, "Project not found")
+    enforce_run_budget(user)
     grade = (body.grade_level or proj["grade_level"] or "").strip()
 
     run = db.create_run(
@@ -304,6 +337,7 @@ async def api_create_pdf_run(
     proj = db.get_project(project_id, int(user["id"]))
     if proj is None:
         raise HTTPException(404, "Project not found")
+    enforce_run_budget(user)
     title = title.strip()
     if not title:
         raise HTTPException(400, "Topic / title is required")
@@ -390,6 +424,7 @@ def api_revise_run(
     run = db.get_run(run_id, int(user["id"]))
     if run is None:
         raise HTTPException(404, "Run not found")
+    enforce_run_budget(user)
     if run["status"] != "done":
         raise HTTPException(409, "Run is not finished yet — wait for it to complete.")
     if run["backend"] == "mock":
@@ -540,7 +575,7 @@ def api_config() -> dict:
             os.environ.get("MATHPIX_APP_ID") and os.environ.get("MATHPIX_APP_KEY")
         ),
         "default_backend": os.environ.get("IMAGE_BACKEND", "gemini"),
-        "image_model": os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image-preview"),
+        "image_model": os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image"),
     }
 
 

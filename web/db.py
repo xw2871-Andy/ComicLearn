@@ -361,6 +361,23 @@ def list_runs(project_id: str, user_id: int, limit: int = 50) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def count_runs_since(since_ts: int, user_id: int | None = None) -> int:
+    """Number of runs created at/after ``since_ts``. Scope to one user when
+    ``user_id`` is given, else count across all users (global budget)."""
+
+    with connect() as c:
+        if user_id is None:
+            row = c.execute(
+                "SELECT COUNT(*) FROM runs WHERE created_at >= ?", (since_ts,)
+            ).fetchone()
+        else:
+            row = c.execute(
+                "SELECT COUNT(*) FROM runs WHERE created_at >= ? AND user_id = ?",
+                (since_ts, user_id),
+            ).fetchone()
+        return int(row[0] or 0)
+
+
 # ----- Events ---------------------------------------------------------------- #
 
 

@@ -31,7 +31,10 @@ def main() -> int:
         )
         return 1
 
-    host = os.environ.get("HOST", "127.0.0.1")
+    # When a host platform (Railway, Render, Fly, …) injects PORT, bind all
+    # interfaces so the container is reachable; locally default to loopback.
+    default_host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    host = os.environ.get("HOST", default_host)
     port = int(os.environ.get("PORT", "8000"))
     display_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
 

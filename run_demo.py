@@ -55,7 +55,7 @@ STORYBOARD_SYSTEM = _pmod.STORYBOARD_SYSTEM
 SVG_PANEL_SYSTEM = _pmod.SVG_PANEL_SYSTEM
 
 ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages"
-MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5")
+MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-4-8")
 
 
 # --------------------------------------------------------------------------- #
