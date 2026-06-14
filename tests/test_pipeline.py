@@ -33,6 +33,31 @@ def test_json_lenient_parser_handles_raw_object() -> None:
     assert _parse_json_lenient('{"x": "y"}') == {"x": "y"}
 
 
+def test_claude_client_retries_without_deprecated_temperature() -> None:
+    from types import SimpleNamespace
+
+    from curriculum_to_comic.claude_client import ClaudeClient
+
+    calls: list[dict[str, object]] = []
+
+    class FakeMessages:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            if "temperature" in kwargs:
+                raise RuntimeError("`temperature` is deprecated for this model.")
+            return SimpleNamespace(
+                content=[SimpleNamespace(type="text", text="ok")],
+                stop_reason="end_turn",
+            )
+
+    client = ClaudeClient.__new__(ClaudeClient)
+    client._client = SimpleNamespace(messages=FakeMessages())
+
+    assert client.complete(system="s", user="u", model="claude-test") == "ok"
+    assert "temperature" in calls[0]
+    assert "temperature" not in calls[1]
+
+
 def test_from_topic_normalizes_input() -> None:
     from curriculum_to_comic.extractors import from_topic
 

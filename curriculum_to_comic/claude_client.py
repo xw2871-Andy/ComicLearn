@@ -17,6 +17,24 @@ class ClaudeClient:
     def __init__(self, api_key: str | None = None) -> None:
         self._client = Anthropic(api_key=api_key or SETTINGS.require_anthropic())
 
+    def _messages_create(self, *, temperature: float, **kwargs: Any) -> Any:
+        """Call Anthropic Messages, retrying without deprecated temperature.
+
+        Some newer Claude models reject ``temperature`` entirely. Older models
+        still accept it, so keep the tuning when possible and fall back only
+        when the API explicitly says the parameter is unsupported.
+        """
+
+        try:
+            return self._client.messages.create(temperature=temperature, **kwargs)
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "temperature" not in msg or not any(
+                token in msg for token in ("deprecated", "not supported", "unsupported")
+            ):
+                raise
+            return self._client.messages.create(**kwargs)
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     def complete(
         self,
@@ -38,7 +56,7 @@ class ClaudeClient:
         budget = max_tokens
         text = ""
         for _attempt in range(3):
-            resp = self._client.messages.create(
+            resp = self._messages_create(
                 model=model or SETTINGS.reasoning_model,
                 system=system,
                 max_tokens=budget,
@@ -75,7 +93,7 @@ class ClaudeClient:
         """
 
         b64 = base64.b64encode(image_bytes).decode("ascii")
-        resp = self._client.messages.create(
+        resp = self._messages_create(
             model=model or SETTINGS.reasoning_model,
             system=system,
             max_tokens=max_tokens,
@@ -135,7 +153,7 @@ class ClaudeClient:
                 }
             )
         content.append({"type": "text", "text": user_text})
-        resp = self._client.messages.create(
+        resp = self._messages_create(
             model=model or SETTINGS.reasoning_model,
             system=system,
             max_tokens=max_tokens,
