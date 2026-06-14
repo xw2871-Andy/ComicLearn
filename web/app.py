@@ -1,4 +1,4 @@
-"""FastAPI app for the ComicTeach studio.
+"""FastAPI app for the ComicLearn studio.
 
 Routes
 ------
@@ -77,7 +77,7 @@ if ENV_PATH.exists():
 
 APP_VERSION = "0.4.0"
 
-app = FastAPI(title="ComicTeach Studio", version=APP_VERSION)
+app = FastAPI(title="ComicLearn Studio", version=APP_VERSION)
 
 # Initialize DB on first import so the first request doesn't pay the cost.
 db.init_db()
@@ -544,7 +544,7 @@ def root() -> HTMLResponse:
     index = STATIC_DIR / "index.html"
     if not index.exists():
         return HTMLResponse(
-            "<h1>AI Comic Book Studio</h1>"
+            "<h1>ComicLearn Studio</h1>"
             "<p>Frontend not built yet. Add web/static/index.html.</p>",
             status_code=500,
         )

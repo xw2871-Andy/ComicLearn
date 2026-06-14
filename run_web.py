@@ -1,4 +1,4 @@
-"""Launch the ComicTeach studio web app.
+"""Launch the ComicLearn studio web app.
 
 Usage::
 
@@ -38,7 +38,7 @@ def main() -> int:
     port = int(os.environ.get("PORT", "8000"))
     display_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
 
-    print(f"ComicTeach Studio · http://{display_host}:{port}")
+    print(f"ComicLearn Studio · http://{display_host}:{port}")
     try:
         uvicorn.run("web.app:app", host=host, port=port, reload=False, log_level="info")
     except SystemExit:

@@ -747,11 +747,11 @@ def _friendly_error_message(exc: Exception) -> str:
     if root_name == "AuthenticationError":
         return (
             "Claude authentication failed. Check your ANTHROPIC_API_KEY in "
-            "`~/ComicTeach/.env`, save the file, then restart `python run_web.py`."
+            "`~/ComicLearn/.env`, save the file, then restart `python run_web.py`."
         )
     if "ANTHROPIC_API_KEY" in root_text:
         return (
-            "ANTHROPIC_API_KEY is missing. Add it to `~/ComicTeach/.env`, "
+            "ANTHROPIC_API_KEY is missing. Add it to `~/ComicLearn/.env`, "
             "then restart `python run_web.py`."
         )
     if "GEMINI_API_KEY" in root_text:
