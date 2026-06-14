@@ -1,12 +1,12 @@
-# ComicTeach — incubator showcase site
+# ComicLearn — Vercel website
 
-The public-facing website for ComicTeach — the AI learning studio that turns
-lessons into teachable comics.
+The public-facing website for ComicLearn. It is meant to live on Vercel and
+send teachers into the hosted ComicLearn Studio backend.
 
-**Stack:** Next.js 14 (App Router) · Tailwind CSS · TypeScript · deployed on
+**Stack:** Next.js 16 (App Router) · Tailwind CSS · TypeScript · deployed on
 Vercel.
 
-This folder is the Next.js showcase inside the main `ComicTeach` repository.
+This folder is the Next.js site inside the main `ComicLearn` repository.
 
 ---
 
@@ -28,7 +28,7 @@ Node 18.17+ is required.
 ## Project layout
 
 ```
-comicteach-site/
+comiclearn-site/
 ├── app/                    # Next.js App Router
 │   ├── page.tsx            # Homepage
 │   ├── opengraph-image.tsx # Auto-generated OG image
@@ -54,15 +54,33 @@ and `colors.accent`).
 
 ## Deploy
 
-### Option A — Vercel (recommended)
+### Vercel
+
+1. Import `https://github.com/xw2871-Andy/ComicLearn` in Vercel.
+2. Set **Root Directory** to `apps/site`.
+3. Set environment variables:
 
 ```bash
-npm install -g vercel
-vercel             # first time: links the project
-vercel --prod      # deploy to comicteach.com
+NEXT_PUBLIC_SITE_DOMAIN=comiclearn.dpdns.org
+NEXT_PUBLIC_SITE_URL=https://comiclearn.dpdns.org
+NEXT_PUBLIC_STUDIO_URL=https://your-hosted-studio-url
 ```
 
-### Option B — any Node host
+4. Deploy. Every push to `main` will redeploy the site.
+
+### DigitalPlat FreeDomain
+
+Register a free domain from the DigitalPlat dashboard, then add it to the
+Vercel project. Vercel will show the DNS record to create, usually:
+
+```text
+CNAME  your-subdomain  cname.vercel-dns.com
+```
+
+After DNS verifies, update `NEXT_PUBLIC_SITE_DOMAIN` and
+`NEXT_PUBLIC_SITE_URL` in Vercel and redeploy.
+
+### Any Node host
 
 ```bash
 npm run build

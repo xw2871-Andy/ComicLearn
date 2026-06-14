@@ -1,8 +1,8 @@
 {
-  "name": "comicteach-site",
+  "name": "comiclearn-site",
   "version": "0.1.0",
   "private": true,
-  "description": "Showcase site for ComicTeach, the AI learning studio that turns lessons into teachable comics.",
+  "description": "Showcase site for ComicLearn, the AI learning studio that turns lessons into teachable comics.",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

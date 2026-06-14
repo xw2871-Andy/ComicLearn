@@ -6,7 +6,6 @@ const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#features",     label: "Features" },
   { href: "/#showcase",     label: "Showcase" },
-  { href: "/about",         label: "About" },
   { href: "/docs",          label: "Docs" }
 ];
 
@@ -42,8 +41,8 @@ export function Header() {
             <Github className="h-4 w-4" />
             Star on GitHub
           </Link>
-          <Link href={site.links.discord} target="_blank" rel="noreferrer" className="btn-primary px-4 py-2 text-xs">
-            Join Discord
+          <Link href={site.links.studio} target="_blank" rel="noreferrer" className="btn-primary px-4 py-2 text-xs">
+            Open Studio
           </Link>
         </div>
       </div>
@@ -52,10 +51,10 @@ export function Header() {
 }
 
 function Mark() {
-  // Tiny monogram: "CT" inside a paper square — matches the whitepaper vibe.
+  // Tiny monogram: "CL" inside a paper square — matches the whitepaper vibe.
   return (
     <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-ink text-[0.65rem] font-bold tracking-wider text-paper">
-      CT
+      CL
     </span>
   );
 }

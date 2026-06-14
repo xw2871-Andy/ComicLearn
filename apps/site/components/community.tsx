@@ -11,7 +11,7 @@ export function Community() {
             <span className="eyebrow">Community</span>
             <h2 className="mt-4 font-serif text-h1">Build it with us.</h2>
             <p className="mt-5 max-w-prose text-lead text-muted">
-              ComicTeach is being built in the open by teachers, students, and
+              ComicLearn is being built in the open by teachers, students, and
               engineers who think learning should feel less like a textbook and
               more like a Saturday morning cartoon. Drop into Discord, file an
               issue, or send a pull request.
@@ -43,7 +43,7 @@ export function Community() {
           <div className="grid gap-4">
             <ChannelRow tag="#welcome" desc="Say hi · share what you teach" />
             <ChannelRow tag="#show-and-tell" desc="Post the comics you generated" />
-            <ChannelRow tag="#feature-requests" desc="What should ComicTeach do next?" />
+            <ChannelRow tag="#feature-requests" desc="What should ComicLearn do next?" />
             <ChannelRow tag="#help" desc="Stuck on setup? We'll get you running." />
           </div>
         </div>

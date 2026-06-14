@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Github, Mail, MessageCircle } from "lucide-react";
 import { site } from "@/lib/site";
@@ -19,7 +18,7 @@ export default function AboutPage() {
         </h1>
         <p className="mt-6 max-w-prose text-lead text-muted">
           Most students don't fail because the material is too hard. They fail
-          because they never start. ComicTeach is a small bet that if a lesson
+          because they never start. ComicLearn is a small bet that if a lesson
           looks like the comic on the ride home, it will get read.
         </p>
       </header>

@@ -14,13 +14,12 @@ export function OpenSource() {
               Open source
             </span>
             <h2 className="mt-4 font-serif text-h1 text-paper">
-              Read the source. Fork the agent. Ship your own.
+              Use the hosted studio. Fork the agent when you need more.
             </h2>
             <p className="mt-5 max-w-prose text-lead text-paper/75">
-              ComicTeach is MIT licensed and lives on GitHub. Every prompt,
-              every QA rubric, every panel renderer — all of it is in the open. If
-              you want a different art style, a different character, or a different
-              language, the answer is always "send a PR."
+              ComicLearn's public studio is the fastest path for teachers and
+              learners. The GitHub repo is there for developers: every prompt,
+              QA rubric, and panel renderer is visible, editable, and ready for PRs.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -40,7 +39,7 @@ export function OpenSource() {
                 className="inline-flex items-center gap-2 rounded-md border border-paper/20 px-5 py-3 text-sm font-medium text-paper transition hover:bg-paper/10"
               >
                 <Terminal className="h-4 w-4" />
-                Self-host in 60s
+                Developer quickstart
               </Link>
             </div>
           </div>
@@ -50,7 +49,7 @@ export function OpenSource() {
             <div className="flex items-center justify-between text-xs text-paper/60">
               <span className="inline-flex items-center gap-2">
                 <Github className="h-3.5 w-3.5" />
-                comicteach / comicteach
+                xw2871-Andy / ComicLearn
               </span>
               <span className="rounded-full border border-paper/20 px-2 py-0.5 uppercase tracking-wide">
                 MIT
@@ -58,8 +57,8 @@ export function OpenSource() {
             </div>
 
             <div className="mt-5 space-y-1.5 text-[0.78rem] leading-relaxed text-paper/80">
-              <RepoLine label="$ git clone" value="https://github.com/xw2871-Andy/ComicTeach.git" />
-              <RepoLine label="$ cd"        value="ComicTeach" />
+              <RepoLine label="$ git clone" value="https://github.com/xw2871-Andy/ComicLearn.git" />
+              <RepoLine label="$ cd"        value="ComicLearn" />
               <RepoLine label="$ pip install" value='-e ".[web]"' />
               <RepoLine label="$ python"   value="run_web.py  # → http://127.0.0.1:8000" />
             </div>

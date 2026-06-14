@@ -36,7 +36,7 @@ export default async function OpengraphImage() {
               letterSpacing: 1
             }}
           >
-            CT
+            CL
           </div>
           <span style={{ fontSize: 28, fontWeight: 600, color: "#0f172a" }}>
             {site.name}
@@ -53,7 +53,7 @@ export default async function OpengraphImage() {
               margin: 0
             }}
           >
-            Open-source AI agent for teachers
+            Hosted AI comic studio for teachers
           </p>
           <h1
             style={{
@@ -81,7 +81,7 @@ export default async function OpengraphImage() {
           }}
         >
           <span>{site.domain}</span>
-          <span>MIT · Self-host in 60s</span>
+          <span>Invite-gated · Server-side keys</span>
         </div>
       </div>
     ),

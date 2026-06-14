@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# ComicTeach site — Standalone setup + launcher (macOS / Linux)
+# ComicLearn site — Standalone setup + launcher (macOS / Linux)
 #
 # What this does:
-#   1. Copies this project to ~/comicteach-site (so it lives outside Cowork).
+#   1. Copies this project to ~/comiclearn-site (so it lives outside Cowork).
 #   2. Installs Node deps (npm install).
 #   3. Boots Next.js dev server at http://localhost:3000.
 #
 # Re-running is safe: each step skips itself if already done.
 #
 # Usage:
-#   bash setup_standalone.sh                # default: ~/comicteach-site
+#   bash setup_standalone.sh                # default: ~/comiclearn-site
 #   bash setup_standalone.sh /custom/path
 #   bash setup_standalone.sh --sync         # re-copy source files
 #   bash setup_standalone.sh --clean        # nuke node_modules first
@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-DEST="$HOME/comicteach-site"
+DEST="$HOME/comiclearn-site"
 SYNC=0
 CLEAN=0
 LAUNCH=1
@@ -40,7 +40,7 @@ done
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
 if [ ! -f "$SRC/package.json" ] || [ ! -f "$SRC/next.config.mjs" ]; then
-  echo "ERROR: $SRC doesn't look like the ComicTeach site (no package.json + next.config.mjs)." >&2
+  echo "ERROR: $SRC doesn't look like the ComicLearn site (no package.json + next.config.mjs)." >&2
   exit 1
 fi
 

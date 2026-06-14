@@ -11,7 +11,7 @@ export function Footer() {
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 font-serif text-lg font-semibold">
               <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-ink text-[0.65rem] font-bold tracking-wider text-paper">
-                CT
+                CL
               </span>
               {site.name}
             </div>
@@ -22,10 +22,10 @@ export function Footer() {
           </div>
 
           <FooterCol title="Product">
+            <FooterLink href={site.links.studio} external>Open Studio</FooterLink>
             <FooterLink href="/#how-it-works">How it works</FooterLink>
             <FooterLink href="/#features">Features</FooterLink>
             <FooterLink href="/#showcase">Showcase</FooterLink>
-            <FooterLink href="/demo">Live demo</FooterLink>
             <FooterLink href="/docs">Docs</FooterLink>
           </FooterCol>
 

@@ -1,19 +1,19 @@
 const faqs = [
   {
-    q: "Is ComicTeach really free?",
-    a: "Yes — the prototype is MIT licensed. You bring your own API keys (Anthropic for the lesson agent, optionally Gemini for the art) and pay only the underlying model providers. A hosted tier can come later for teachers who would rather not manage keys."
+    q: "Do teachers need their own API keys?",
+    a: "No. The hosted studio uses server-side keys, so users register with an invite code and never see provider credentials. Developers can still self-host from GitHub with their own keys."
   },
   {
     q: "What subjects work best?",
     a: "We've tested AP Calculus AB, AP Biology, US History, ESL vocabulary, and 5th-grade fractions. Anything textbook-shaped works. Heavy diagrams (e.g., circuit schematics) are still rough — that's the next frontier."
   },
   {
-    q: "Will it work without an OpenAI / Google account?",
-    a: "You need an Anthropic API key for the lesson + storyboard agent. For art, the default SVG backend runs entirely on your machine with no external API. Add a Gemini key if you want photoreal manga."
+    q: "How do I get access?",
+    a: "Open the hosted studio, create an account, and enter the invite code from the ComicLearn team. Usage is capped so one classroom cannot accidentally drain the API budget."
   },
   {
     q: "How long does generation take?",
-    a: "About 90 seconds end-to-end with the SVG backend on a laptop. Gemini takes 2–3 minutes depending on quota and queue. The agent streams progress so you watch each step happen."
+    a: "Draft runs can be quick, while high-quality Gemini image runs take longer because pages are generated one by one for consistency. The studio streams each step so you can watch progress."
   },
   {
     q: "Can I use my school's mascot / my own characters?",
@@ -21,7 +21,7 @@ const faqs = [
   },
   {
     q: "Where does the agent run? Do you see my lessons?",
-    a: "The agent runs on your machine, your laptop, your school's server — wherever you self-host. We have no servers and never see your prompts."
+    a: "The hosted version runs on ComicLearn's backend so provider keys stay hidden. Generated content is stored for your account; do not upload private student data during the research preview."
   }
 ];
 

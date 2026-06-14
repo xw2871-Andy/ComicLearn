@@ -12,7 +12,7 @@ Use this when preparing the public site in `apps/site`.
 
 ## Content
 
-- [ ] Confirm the GitHub URL points to `https://github.com/xw2871-Andy/ComicTeach`.
+- [ ] Confirm the GitHub URL points to `https://github.com/xw2871-Andy/ComicLearn`.
 - [ ] Replace Discord/Twitter links if they are not active.
 - [ ] Add a production demo video URL in `lib/site.ts` if one is available.
 - [ ] Add a founder image only if the page design uses it.

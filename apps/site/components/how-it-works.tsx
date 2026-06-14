@@ -19,8 +19,8 @@ const steps = [
     icon: BookOpen,
     title: "Hand it to your students",
     body:
-      "Out comes a six-page comic book PDF — and the open-source repo lets you swap art styles, characters, or even the language entirely.",
-    sub: "PDF · PNG · SVG · self-host"
+      "Out comes a six-page comic book PDF from the hosted studio. Developer teams can still use the open-source repo to swap art styles, characters, or languages.",
+    sub: "PDF · PNG · SVG · hosted studio"
   }
 ];
 
@@ -33,7 +33,7 @@ export function HowItWorks() {
           Three steps, no design skills required.
         </h2>
         <p className="mx-auto mt-4 max-w-prose text-lead text-muted">
-          Under the hood, ComicTeach is a multi-agent pipeline. From your seat,
+          Under the hood, ComicLearn is a multi-agent pipeline. From your seat,
           it's three boxes and a button.
         </p>
       </div>

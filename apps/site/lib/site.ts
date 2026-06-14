@@ -3,12 +3,12 @@
  * GitHub/Discord URLs without hunting through every page.
  */
 export const site = {
-  name: "ComicTeach",
-  domain: "comicteach.com",
-  url: "https://comicteach.com",
+  name: "ComicLearn",
+  domain: process.env.NEXT_PUBLIC_SITE_DOMAIN ?? "comiclearn.dpdns.org",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://comiclearn.dpdns.org",
   tagline: "Turn lessons into teachable comics.",
   description:
-    "ComicTeach is an open-source AI learning studio that turns any lesson — from AP Calculus to 7th-grade history — into a six-page comic students will actually finish.",
+    "ComicLearn is an AI learning studio that turns any lesson — from AP Calculus to 7th-grade history — into a six-page comic students will actually finish.",
   author: {
     name: "Xingkai Wang",
     school: "Duke University",
@@ -18,9 +18,12 @@ export const site = {
     photo: "/founder.svg"
   },
   links: {
-    github: "https://github.com/xw2871-Andy/ComicTeach",
+    studio:
+      process.env.NEXT_PUBLIC_STUDIO_URL ??
+      "https://whose-attributes-park-twice.trycloudflare.com",
+    github: "https://github.com/xw2871-Andy/ComicLearn",
     discord: "https://discord.gg/sUZPnP7P",
-    twitter: "https://twitter.com/comicteach",
+    twitter: "https://twitter.com/comiclearn",
     email: "xw2871@nyu.edu"
   },
   // Showcase assets live in public/showcase/.

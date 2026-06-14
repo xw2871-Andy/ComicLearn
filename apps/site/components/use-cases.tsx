@@ -27,7 +27,7 @@ const cases = [
     title: "Homeschool + tutoring",
     quote:
       "Custom lesson, custom character — your kid as the protagonist of their own chemistry textbook.",
-    detail: "Free with your own API key."
+    detail: "Invite-only hosted studio, with provider keys kept server-side."
   }
 ];
 
@@ -38,7 +38,7 @@ export function UseCases() {
         <span className="eyebrow">Who it's for</span>
         <h2 className="mt-4 font-serif text-h1">From AP Calc to 7th-grade history.</h2>
         <p className="mx-auto mt-4 max-w-prose text-lead text-muted">
-          ComicTeach isn't tied to one subject. If a textbook can be written,
+          ComicLearn isn't tied to one subject. If a textbook can be written,
           it can be drawn.
         </p>
       </div>

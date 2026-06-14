@@ -19,7 +19,7 @@ export function Showcase() {
         <span className="eyebrow">Showcase</span>
         <h2 className="mt-4 font-serif text-h1">A finished lesson, page by page.</h2>
         <p className="mx-auto mt-4 max-w-prose text-lead text-muted">
-          These two AP Calculus units were generated end-to-end by ComicTeach.
+          These two AP Calculus units were generated end-to-end by ComicLearn.
           Nothing here is hand-drawn or hand-edited.
         </p>
       </div>
@@ -59,7 +59,7 @@ export function Showcase() {
             </div>
             <figcaption className="flex items-center justify-between border-t border-rule px-4 py-2.5 text-[0.7rem] uppercase tracking-[0.15em] text-muted">
               <span>Page {i + 1} / 6</span>
-              <span>ComicTeach</span>
+              <span>ComicLearn</span>
             </figcaption>
           </figure>
         ))}
@@ -74,7 +74,7 @@ export function Showcase() {
           {site.showcase.demoVideoEmbed ? (
             <iframe
               src={site.showcase.demoVideoEmbed}
-              title="ComicTeach generation walkthrough"
+              title="ComicLearn generation walkthrough"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="aspect-video w-full bg-black"

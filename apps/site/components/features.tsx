@@ -40,9 +40,9 @@ const features = [
   },
   {
     icon: GitBranch,
-    title: "Open-source forever",
+    title: "Hosted keys, open code",
     body:
-      "MIT license. Run it locally, on one classroom machine, or on a school server. No vendor lock-in.",
+      "The hosted beta keeps provider keys on the server. The MIT repo stays open for teams that want their own deployment.",
   }
 ];
 
@@ -57,7 +57,7 @@ export function Features() {
           </h2>
           <p className="mx-auto mt-4 max-w-prose text-lead text-muted">
             We've watched too many "AI tutors" generate beautiful nonsense. Every
-            choice in ComicTeach is downstream of one question: <em>will a real
+            choice in ComicLearn is downstream of one question: <em>will a real
             student understand this?</em>
           </p>
         </div>

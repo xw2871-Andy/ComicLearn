@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Github, ExternalLink } from "lucide-react";
+import { ArrowRight, Github, ExternalLink } from "lucide-react";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Docs",
-  description: `Get up and running with ${site.name} in under 5 minutes.`
+  description: `Use ${site.name} as a hosted studio or deploy your own backend.`
 };
 
 export default function DocsPage() {
@@ -13,14 +13,23 @@ export default function DocsPage() {
     <article className="container py-20 md:py-28">
       <header className="mx-auto max-w-3xl">
         <p className="page-no">§ Docs · v0.1</p>
-        <h1 className="mt-4 font-serif text-display">Quickstart</h1>
+        <h1 className="mt-4 font-serif text-display">Use ComicLearn</h1>
         <p className="mt-6 max-w-prose text-lead text-muted">
-          ComicTeach runs on your machine, your laptop, or your school's server.
-          You need Python 3.10+, an Anthropic API key, and about five minutes.
-          Full reference docs live in the repo.
+          Most teachers should use the hosted studio: keys stay on the server,
+          accounts are invite-gated, and generated comics are saved to your
+          project history. Developers can still self-host from GitHub.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href={site.links.studio}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary"
+          >
+            Open Studio
+            <ArrowRight className="h-4 w-4" />
+          </Link>
           <Link
             href={site.links.github}
             target="_blank"
@@ -35,53 +44,56 @@ export default function DocsPage() {
       </header>
 
       <div className="mx-auto mt-14 max-w-prose space-y-12">
-        <Step n="01" title="Clone the repo">
+        <Step n="01" title="Open the hosted studio">
+          <p className="text-sm leading-relaxed text-muted">
+            Go to the studio link, create an account, and enter the invite code
+            you received. You do not need to clone GitHub or paste API keys.
+          </p>
+          <Code>{site.links.studio}</Code>
+        </Step>
+
+        <Step n="02" title="Create a project">
+          <p className="text-sm leading-relaxed text-muted">
+            Choose a grade level, cast, and classroom setting. ComicLearn keeps
+            each run in your project history so you can download or revise it.
+          </p>
+        </Step>
+
+        <Step n="03" title="Generate from topic, markdown, or PDF">
+          <p className="text-sm leading-relaxed text-muted">
+            Pick the input type, choose image quality, and start generation.
+            The studio streams lesson planning, storyboard QA, page rendering,
+            visual QA, and PDF compilation.
+          </p>
+        </Step>
+
+        <Step n="04" title="Revise a page">
+          <p className="text-sm leading-relaxed text-muted">
+            After the PDF is generated, open a page, write specific feedback,
+            and redraw only that page. The backend reruns QA and recompiles the PDF.
+          </p>
+        </Step>
+
+        <Step n="05" title="Developer self-hosting">
+          <p className="mt-3 text-sm text-muted">
+            Clone the repo only if you want to develop the agent or run your own
+            backend with your own provider keys.
+          </p>
           <Code>{`git clone ${site.links.github}.git
-cd ComicTeach`}</Code>
-        </Step>
-
-        <Step n="02" title="Create a virtual environment">
-          <Code>{`python3 -m venv .venv
-source .venv/bin/activate`}</Code>
-        </Step>
-
-        <Step n="03" title="Install the agent + web UI">
-          <Code>{`pip install -e ".[web]"`}</Code>
-          <p className="mt-3 text-sm text-muted">
-            This installs the core <code className="font-mono text-ink">curriculum_to_comic</code> package
-            plus FastAPI/Uvicorn for the local studio.
-          </p>
-        </Step>
-
-        <Step n="04" title="Add your API keys">
-          <Code>{`cat > .env <<EOF
-ANTHROPIC_API_KEY=sk-ant-...
-GEMINI_API_KEY=AIza...      # optional, only for Gemini backend
-IMAGE_BACKEND=svg           # 'svg' (free, local) or 'gemini'
-EOF`}</Code>
-          <p className="mt-3 text-sm text-muted">
-            The SVG backend has no API cost and runs entirely on your machine.
-            The Gemini backend produces photoreal manga and bills your Google account.
-          </p>
-        </Step>
-
-        <Step n="05" title="Launch the studio">
-          <Code>{`python run_web.py
-# → open http://127.0.0.1:8000`}</Code>
-          <p className="mt-3 text-sm text-muted">
-            Sign up locally (everything stays on your machine), create a project,
-            and hit <strong>Generate</strong>. Your first six-page comic should be
-            ready in about 90 seconds.
-          </p>
+cd ComicLearn
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[web]"
+python run_web.py`}</Code>
         </Step>
       </div>
 
       <div className="mx-auto mt-20 max-w-prose rounded-paper border border-rule bg-cream/40 p-6">
         <h2 className="font-serif text-h2">Need help?</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Join the <Link className="font-medium text-indigo-700 underline-offset-2 hover:underline" href={site.links.discord} target="_blank" rel="noreferrer">
-            ComicTeach Discord
-          </Link> — fastest place to get unstuck, swap prompts, and see what other teachers are generating.
+          For access, feedback, or a custom school deployment, email{" "}
+          <Link className="font-medium text-indigo-700 underline-offset-2 hover:underline" href={`mailto:${site.links.email}`}>
+            {site.links.email}
+          </Link>.
         </p>
       </div>
     </article>
