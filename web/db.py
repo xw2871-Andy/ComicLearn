@@ -201,6 +201,58 @@ def delete_session(token: str) -> None:
         c.execute("DELETE FROM sessions WHERE token = ?", (token,))
 
 
+def list_user_usage(now: int | None = None) -> list[dict]:
+    """Return non-sensitive per-user usage stats for admin reporting."""
+
+    now = now_ts() if now is None else now
+    with connect() as c:
+        rows = c.execute(
+            """
+            SELECT
+                u.id,
+                u.email,
+                u.display_name,
+                u.created_at,
+                COALESCE(p.project_count, 0) AS project_count,
+                COALESCE(r.run_count, 0) AS run_count,
+                COALESCE(r.done_run_count, 0) AS done_run_count,
+                COALESCE(r.error_run_count, 0) AS error_run_count,
+                COALESCE(s.active_session_count, 0) AS active_session_count,
+                r.first_run_at,
+                COALESCE(r.last_run_at, p.last_project_at, u.created_at) AS last_activity_at
+            FROM users u
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*) AS project_count,
+                    MAX(updated_at) AS last_project_at
+                FROM projects
+                GROUP BY user_id
+            ) p ON p.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*) AS run_count,
+                    SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS done_run_count,
+                    SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS error_run_count,
+                    MIN(created_at) AS first_run_at,
+                    MAX(COALESCE(finished_at, created_at)) AS last_run_at
+                FROM runs
+                GROUP BY user_id
+            ) r ON r.user_id = u.id
+            LEFT JOIN (
+                SELECT user_id, COUNT(*) AS active_session_count
+                FROM sessions
+                WHERE expires_at > ?
+                GROUP BY user_id
+            ) s ON s.user_id = u.id
+            ORDER BY last_activity_at DESC, u.created_at DESC
+            """,
+            (now,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
 # ----- Projects -------------------------------------------------------------- #
 
 

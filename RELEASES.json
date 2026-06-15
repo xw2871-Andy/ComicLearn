@@ -1,6 +1,15 @@
 {
-  "current": "0.4.1",
+  "current": "0.4.2",
   "releases": [
+    {
+      "version": "0.4.2",
+      "date": "2026-06-16",
+      "title": "Protected admin usage reporting",
+      "changes": [
+        "Added a token-protected admin usage endpoint for production account checks.",
+        "Reports registered accounts, project counts, run counts, active sessions, and last activity without exposing password hashes or session tokens."
+      ]
+    },
     {
       "version": "0.4.1",
       "date": "2026-06-15",

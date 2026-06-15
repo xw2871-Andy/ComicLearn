@@ -69,6 +69,47 @@ def test_version_metadata_matches_current_version() -> None:
     assert history["releases"][0]["changes"]
 
 
+def test_user_usage_stats_are_non_sensitive(tmp_path: Path) -> None:
+    from web import db
+
+    old_db_path = db.DB_PATH
+    old_initialized = db._INITIALIZED
+    db.DB_PATH = tmp_path / "studio.db"
+    db._INITIALIZED = False
+    try:
+        user_id = db.create_user("usage@example.com", "Usage Tester", "salt", "hash")
+        project = db.create_project(
+            user_id,
+            "Usage Project",
+            "AP Calculus AB",
+            ["Doraemon"],
+            None,
+        )
+        run = db.create_run(
+            project_id=project["id"],
+            user_id=user_id,
+            title="Limits",
+            grade_level="AP Calculus AB",
+            source_kind="topic",
+            source_text="Limits",
+            backend="mock",
+            run_qa=False,
+        )
+        db.update_run(run["id"], status="done", finished_at=db.now_ts())
+
+        usage = db.list_user_usage()
+
+        assert usage[0]["email"] == "usage@example.com"
+        assert usage[0]["project_count"] == 1
+        assert usage[0]["run_count"] == 1
+        assert usage[0]["done_run_count"] == 1
+        assert "pwd_hash" not in usage[0]
+        assert "pwd_salt" not in usage[0]
+    finally:
+        db.DB_PATH = old_db_path
+        db._INITIALIZED = old_initialized
+
+
 def test_from_topic_normalizes_input() -> None:
     from curriculum_to_comic.extractors import from_topic
 

@@ -28,6 +28,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +103,21 @@ def public_user_dict(user: dict) -> dict:
         "email": user["email"],
         "display_name": user["display_name"],
     }
+
+
+def _iso_ts(value: int | None) -> str | None:
+    if not value:
+        return None
+    return datetime.fromtimestamp(int(value), tz=timezone.utc).isoformat()
+
+
+def require_admin_stats(request: Request) -> None:
+    required = os.environ.get("ADMIN_STATS_TOKEN", "").strip()
+    if not required:
+        raise HTTPException(404, "Admin usage reporting is not enabled.")
+    supplied = request.headers.get("x-admin-token", "").strip()
+    if not supplied or not secrets.compare_digest(supplied, required):
+        raise HTTPException(403, "Invalid admin token.")
 
 
 def _set_session_cookie(resp: Response, token: str) -> None:
@@ -584,6 +601,46 @@ def api_config() -> dict:
 @app.get("/api/releases")
 def api_releases() -> dict:
     return get_release_history()
+
+
+@app.get("/api/admin/usage")
+def api_admin_usage(request: Request) -> dict:
+    require_admin_stats(request)
+    users = db.list_user_usage()
+    clean_users = [
+        {
+            "id": row["id"],
+            "email": row["email"],
+            "display_name": row["display_name"],
+            "created_at": _iso_ts(row["created_at"]),
+            "project_count": row["project_count"],
+            "run_count": row["run_count"],
+            "done_run_count": row["done_run_count"],
+            "error_run_count": row["error_run_count"],
+            "active_session_count": row["active_session_count"],
+            "first_run_at": _iso_ts(row["first_run_at"]),
+            "last_activity_at": _iso_ts(row["last_activity_at"]),
+            "has_tried_generation": row["run_count"] > 0,
+            "has_created_project": row["project_count"] > 0,
+        }
+        for row in users
+    ]
+    return {
+        "version": APP_VERSION,
+        "totals": {
+            "registered_accounts": len(clean_users),
+            "accounts_with_projects": sum(
+                1 for user in clean_users if user["has_created_project"]
+            ),
+            "accounts_with_runs": sum(
+                1 for user in clean_users if user["has_tried_generation"]
+            ),
+            "runs": sum(user["run_count"] for user in clean_users),
+            "done_runs": sum(user["done_run_count"] for user in clean_users),
+            "error_runs": sum(user["error_run_count"] for user in clean_users),
+        },
+        "users": clean_users,
+    }
 
 
 # Fallback 404 JSON for /api/*.

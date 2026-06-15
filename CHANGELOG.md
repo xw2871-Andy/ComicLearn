@@ -4,6 +4,14 @@ All notable ComicLearn releases are recorded here. Each new public GitHub update
 should bump `VERSION`, add an entry to `RELEASES.json`, and prepend a matching
 section below.
 
+## [0.4.2] - 2026-06-16
+
+### Added
+
+- Added a token-protected admin usage endpoint at `/api/admin/usage`.
+- Added production account usage reporting without exposing password hashes,
+  session tokens, or provider secrets.
+
 ## [0.4.1] - 2026-06-15
 
 ### Added
