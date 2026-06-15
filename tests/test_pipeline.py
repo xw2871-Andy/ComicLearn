@@ -58,6 +58,17 @@ def test_claude_client_retries_without_deprecated_temperature() -> None:
     assert "temperature" not in calls[1]
 
 
+def test_version_metadata_matches_current_version() -> None:
+    from curriculum_to_comic.version import get_release_history, get_version
+
+    history = get_release_history()
+
+    assert get_version() == history["current"]
+    assert history["releases"]
+    assert history["releases"][0]["version"] == get_version()
+    assert history["releases"][0]["changes"]
+
+
 def test_from_topic_normalizes_input() -> None:
     from curriculum_to_comic.extractors import from_topic
 

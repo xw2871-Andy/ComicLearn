@@ -6,6 +6,7 @@
   const state = {
     me: null,
     config: { providers: { anthropic: false, gemini: false }, mathpix: false },
+    releases: { current: null, releases: [] },
     projects: [],
     activeProjectId: null,
     runs: [],
@@ -113,9 +114,12 @@
 
   // ================================================================ CONFIG
   async function loadConfig() {
-    try {
-      state.config = await api("/api/config");
-    } catch (_) { /* keep defaults */ }
+    const [config, releases] = await Promise.all([
+      api("/api/config").catch(() => null),
+      api("/api/releases").catch(() => null),
+    ]);
+    if (config) state.config = config;
+    if (releases) state.releases = releases;
     applyConfig();
   }
 
@@ -148,10 +152,69 @@
     const bits = [];
     bits.push(p.anthropic ? "Claude ✓" : "Claude –");
     bits.push(p.gemini ? "Gemini ✓" : "Gemini –");
-    if (state.config.app_version) bits.push(`v${state.config.app_version}`);
+    const version = state.releases.current || state.config.app_version;
+    if (version) bits.push(`v${version}`);
     $("#footEnv").textContent = bits.join(" · ");
-    $("#footEnv").title = `Image model: ${state.config.image_model || "n/a"}`;
+    const latest = (state.releases.releases || [])[0];
+    $("#btnReleases").title = latest
+      ? `${latest.title || "Latest release"} · ${latest.date || ""}`
+      : `Image model: ${state.config.image_model || "n/a"}`;
   }
+
+  function openReleaseModal() {
+    renderReleaseHistory();
+    $("#releaseModal").classList.add("open");
+  }
+
+  function closeReleaseModal() {
+    $("#releaseModal").classList.remove("open");
+  }
+
+  function renderReleaseHistory() {
+    const list = $("#releaseList");
+    list.innerHTML = "";
+    const releases = state.releases.releases || [];
+    if (!releases.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-inline";
+      empty.textContent = "No release records yet.";
+      list.appendChild(empty);
+      return;
+    }
+    releases.forEach(rel => {
+      const item = document.createElement("div");
+      item.className = "release-item";
+
+      const top = document.createElement("div");
+      top.className = "release-top";
+      const title = document.createElement("div");
+      title.className = "release-title";
+      const version = document.createElement("b");
+      version.textContent = `v${rel.version || "unknown"}`;
+      const name = document.createElement("span");
+      name.textContent = rel.title || "";
+      title.append(version, name);
+      const date = document.createElement("time");
+      date.textContent = rel.date || "";
+      top.append(title, date);
+
+      const changes = document.createElement("ul");
+      (rel.changes || []).forEach(change => {
+        const li = document.createElement("li");
+        li.textContent = change;
+        changes.appendChild(li);
+      });
+
+      item.append(top, changes);
+      list.appendChild(item);
+    });
+  }
+
+  $("#btnReleases").addEventListener("click", openReleaseModal);
+  $("#releaseClose").addEventListener("click", closeReleaseModal);
+  $("#releaseModal").addEventListener("click", e => {
+    if (e.target.id === "releaseModal") closeReleaseModal();
+  });
 
   // ================================================================ PROJECTS
   async function refreshProjects() {
@@ -611,6 +674,7 @@
   });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") $("#lightbox").classList.remove("open");
+    if (e.key === "Escape") closeReleaseModal();
   });
 
   bootstrap();

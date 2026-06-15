@@ -52,6 +52,8 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from curriculum_to_comic.version import get_release_history, get_version
+
 from . import auth, db, runner
 
 # Resolve key paths.
@@ -75,7 +77,7 @@ if ENV_PATH.exists():
         os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-APP_VERSION = "0.4.0"
+APP_VERSION = get_version()
 
 app = FastAPI(title="ComicLearn Studio", version=APP_VERSION)
 
@@ -577,6 +579,11 @@ def api_config() -> dict:
         "default_backend": os.environ.get("IMAGE_BACKEND", "gemini"),
         "image_model": os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image"),
     }
+
+
+@app.get("/api/releases")
+def api_releases() -> dict:
+    return get_release_history()
 
 
 # Fallback 404 JSON for /api/*.

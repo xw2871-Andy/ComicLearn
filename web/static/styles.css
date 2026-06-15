@@ -276,6 +276,19 @@ input, select, textarea, button { font: inherit; color: inherit; }
 }
 .sidebar .foot a { cursor: pointer; color: var(--muted); }
 .sidebar .foot a:hover { color: var(--err); text-decoration: none; }
+.version-btn {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.version-btn:hover { color: var(--ink); }
 
 /* ---------------------------------------------------------------- Main */
 .main {
@@ -613,6 +626,73 @@ input, select, textarea, button { font: inherit; color: inherit; }
   max-width: 480px;
   padding: 28px;
   box-shadow: 0 8px 40px rgba(0,0,0,.12);
+}
+.release-modal { max-width: 620px; }
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.modal .modal-head h3 { margin-bottom: 0; }
+.modal-close {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.modal-close:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.release-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.release-item {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+.release-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.release-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.release-title b {
+  color: var(--ink);
+  font-size: 14px;
+}
+.release-title span,
+.release-top time {
+  color: var(--muted);
+  font-size: 12px;
+}
+.release-item ul {
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.empty-inline {
+  color: var(--muted);
+  font-size: 13px;
 }
 .modal h3 {
   font-size: 18px;

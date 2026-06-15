@@ -22,8 +22,18 @@ echo "==> 3/5  Review — this should be SOURCE ONLY (no .env, .pdf, .png, studi
 git status --short
 echo "-------------------------------------------------------------------"
 
-echo "==> 4/5  Committing..."
-git commit -m "Sprint (dual providers, Nano Banana Pro, section generator, Mathpix, story/book QA) + model upgrade (Opus 4.8 / gemini-3-pro-image / gemini-3.5-flash) + hosted studio: signup gate & usage caps (v0.4.0)" \
+VERSION="$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")"
+TITLE="$(python3 - <<'PY' 2>/dev/null || echo "Update"
+import json
+from pathlib import Path
+
+data = json.loads(Path("RELEASES.json").read_text(encoding="utf-8"))
+print(data.get("releases", [{}])[0].get("title") or "Update")
+PY
+)"
+
+echo "==> 4/5  Committing release v${VERSION}..."
+git commit -m "Release v${VERSION}: ${TITLE}" \
   || echo "   (nothing new to commit — continuing)"
 
 echo "==> 5/5  Pushing to origin/main..."

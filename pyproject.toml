@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comicteach"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Turn any educational curriculum (topic, markdown, or textbook PDF) into a comic lesson using AI lesson planning, storyboarding, rendering, and visual QA."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -47,3 +47,6 @@ c2c-studio = "run_web:main"
 
 [tool.setuptools.packages.find]
 include = ["curriculum_to_comic*", "web*"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}

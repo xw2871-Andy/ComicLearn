@@ -1,0 +1,26 @@
+{
+  "current": "0.4.1",
+  "releases": [
+    {
+      "version": "0.4.1",
+      "date": "2026-06-15",
+      "title": "Hosted stability and visible version history",
+      "changes": [
+        "Fixed Anthropic model calls that reject the deprecated temperature parameter.",
+        "Added a shared project version source for the web app and Python package.",
+        "Added release metadata so Studio and GitHub can show version history."
+      ]
+    },
+    {
+      "version": "0.4.0",
+      "date": "2026-06-14",
+      "title": "Hosted ComicLearn Studio",
+      "changes": [
+        "Launched the hosted Studio flow for public users through Vercel and Railway.",
+        "Kept provider API keys on the backend while users access the product through the web UI.",
+        "Added invite-only signup, usage caps, persistent Railway storage, and provider configuration checks.",
+        "Updated the generation stack for Claude text, Gemini image generation, Mathpix OCR, and story/art QA."
+      ]
+    }
+  ]
+}

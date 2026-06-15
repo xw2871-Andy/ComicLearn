@@ -98,8 +98,8 @@ redeploy wipes accounts and generated comics.
 ## Step 5 — Deploy and verify
 
 1. Railway builds and deploys; wait for the health check on `/api/health` to pass.
-2. Open the public URL. The sidebar footer should read **v0.4.0** (proof the new
-   build is live).
+2. Open the public URL. The sidebar footer should read the current `VERSION`
+   value, which proves the new build is live.
 3. Visit `https://<your-url>/api/config` — you should see
    `{"providers":{"gemini":true,...}}`. If a provider shows `false`, its key
    isn't set.
@@ -143,7 +143,8 @@ old code) — existing accounts keep working until you remove them from the DB.
 - **"This studio is invite-only"** on signup → expected; enter the access code.
 - **Images 400/403** → the `GEMINI_API_KEY` is wrong or lacks Generative
   Language API access; confirm at aistudio.google.com/apikey.
-- **Verify the live version** any time at `/api/config` and the sidebar `v0.4.0`.
+- **Verify the live version** any time at `/api/config`, `/api/releases`, and
+  the sidebar version button.
 
 ---
 
