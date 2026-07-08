@@ -23,6 +23,8 @@ const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
+        { source: "/studio", destination: `${studioOrigin}/` },
+        { source: "/studio/:path*", destination: `${studioOrigin}/:path*` },
         { source: "/api/:path*", destination: `${studioOrigin}/api/:path*` },
         { source: "/static/:path*", destination: `${studioOrigin}/static/:path*` },
         { source: "/assets/:path*", destination: `${studioOrigin}/assets/:path*` }
