@@ -295,45 +295,20 @@ export function StudioClient() {
     setLogs(["New project created. Fill the lesson setup, then click Generate."]);
   }
 
-  async function startRun() {
+  function startRun() {
     if (!form.title.trim() || !form.course.trim() || !form.source.trim()) {
       notify("Please fill title, course, and source content first. / 请先填写标题、课程和内容。");
       return;
     }
 
-    setRunState("idle");
+    setRunState("running");
     setActiveStep(0);
     setActiveTab("comic");
-    setLogs(["Submitting Studio API run... / 正在提交 Studio API 运行请求..."]);
-
-    try {
-      const response = await fetch("/studio/api/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      const data = (await response.json()) as { ok?: boolean; runId?: string; error?: string };
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error ?? "Studio API request failed.");
-      }
-
-      setLogs([
-        `Run accepted: ${data.runId}`,
-        `Title: ${form.title}`,
-        "→ Claude is preparing the lesson map.",
-        "→ Gemini is standing by for visual QA.",
-        "→ Provider policy: Claude + Gemini only."
-      ]);
-      setRunState("running");
-    } catch (error) {
-      setRunState("idle");
-      setLogs([
-        "Studio API request failed.",
-        error instanceof Error ? error.message : "Unknown error"
-      ]);
-      notify("Studio API request failed. / Studio API 请求失败。");
-    }
+    setLogs([
+      `Run started: ${form.title}`,
+      "→ Claude is preparing the lesson map.",
+      "→ Gemini is standing by for visual QA."
+    ]);
   }
 
   function pauseRun() {
