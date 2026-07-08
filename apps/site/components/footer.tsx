@@ -26,6 +26,7 @@ export function Footer() {
             <FooterLink href="/#how-it-works">How it works</FooterLink>
             <FooterLink href="/#features">Features</FooterLink>
             <FooterLink href="/#showcase">Showcase</FooterLink>
+            <FooterLink href="/video-workflow">Video Workflow</FooterLink>
             <FooterLink href="/holacracy">Holacracy Executor</FooterLink>
             <FooterLink href="/docs">Docs</FooterLink>
           </FooterCol>

@@ -6,6 +6,7 @@ const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#features",     label: "Features" },
   { href: "/#showcase",     label: "Showcase" },
+  { href: "/video-workflow", label: "Video" },
   { href: "/holacracy",     label: "Holacracy" },
   { href: "/docs",          label: "Docs" }
 ];
@@ -19,7 +20,7 @@ export function Header() {
           {site.name}
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
           {nav.map((item) => (
             <Link
               key={item.href}
