@@ -6,6 +6,7 @@ const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#features",     label: "Features" },
   { href: "/#showcase",     label: "Showcase" },
+  { href: "/holacracy",     label: "Holacracy" },
   { href: "/docs",          label: "Docs" }
 ];
 
